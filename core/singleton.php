@@ -256,7 +256,7 @@ class App extends Singleton
 
 	public static function SetCookie(string $key, ?string $value = ''): bool
 	{
-		return is_null($value) ? false : setcookie($key, $value, time() + 31536000); //expire 1 year
+		return is_null($value) ? false : setcookie($key, $value, time() + 31536000, '/'); //expire 1 year and available within the entire domain
 	}
 
 	public static function IsCookie(string $key): bool
