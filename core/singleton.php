@@ -16,9 +16,16 @@ define('APP_ENCODING', 'UTF-8'); //UTF-8 = 1-4 bytes
 define('APP_BUFFERING', false); //output buffering
 
 define('SESSION_LIFETIME', 0); //lifetime of the session cookie, defined in seconds. 0 = until the browser is closed
-define('SESSION_PATH', '/'); //Path on the domain where the cookie will work. Use a single slash ('/') for all paths on the domain.
+define('SESSION_PATH', '/'); //Path on the domain where the cookie will work. Use a single slash ('/') for all paths on the domain. Use empty ('') for current path.
 define('SESSION_DOMAIN', null); //Cookie domain, for example 'www.php.net'. To make cookies visible on all subdomains then the domain must be prefixed with a dot like '.php.net'.
-define('SESSION_SECURE', false); //If true cookie will only be sent over secure connections.
+define('SESSION_SECURE', true); //If true cookie will only be sent over secure connections.
+define('SESSION_HTTPONLY', false); //This means that the cookie won't be accessible by scripting languages, such as JavaScript. (this reduce identity theft through XSS attacks)
+
+define('COOKIE_EXPIRES', 31536000); //lifetime of the session cookie, defined in seconds. 0 = until the browser is closed
+define('COOKIE_PATH', '/'); //Path on the domain where the cookie will work. Use a single slash ('/') for all paths on the domain. Use empty ('') for current path.
+define('COOKIE_DOMAIN', null); //Cookie domain, for example 'www.php.net'. To make cookies visible on all subdomains then the domain must be prefixed with a dot like '.php.net'.
+define('COOKIE_SECURE', true); //If true cookie will only be sent over secure connections.
+define('COOKIE_HTTPONLY', false); //This means that the cookie won't be accessible by scripting languages, such as JavaScript. (this reduce identity theft through XSS attacks)
 
 if(!defined('CONFIG_FILE')) define('CONFIG_FILE', './config.env'); //supported config file types .ini .env .php
 
@@ -172,10 +179,18 @@ class App extends Singleton
 		else if(ob_get_level()) ob_end_clean(); //turn off output buffering
 
 		//session
-		$lifetime = self::Env('SESSION_LIFETIME'); //0 = until the browser is closed
-		session_set_cookie_params($lifetime, self::Env('SESSION_PATH'), self::Env('SESSION_DOMAIN'), self::Env('SESSION_SECURE'));
+		$options = [];
+		$options['lifetime'] = self::Env('SESSION_LIFETIME');
+		if($options['lifetime'] > 0) $options['lifetime'] += time(); 
+		$options['path'] = self::Env('SESSION_PATH');
+		$options['secure'] = self::Env('SESSION_SECURE');
+		$options['httponly'] = self::Env('SESSION_DOMAIN');
+		$options['domain'] = self::Env('SESSION_HTTPONLY');
+		session_set_cookie_params($options);
 		if(session_status() !== PHP_SESSION_ACTIVE) session_start(); //start new or resume existing session
-		if($lifetime > 0 && $lifetime < 31536000) setcookie(session_name(), session_id(), time() + $lifetime, secure: true, httponly: true); //change the session expiry every time the user visits the site
+		$options['expires'] = $options['lifetime'];
+		unset($options['lifetime']);
+		setcookie(session_name(), session_id(), $options); //change the session expiry every time the user visits the site
 	}
 
 	public static function Die(ResponseCode $code = ResponseCode::Nothing, string $string = ''): void
@@ -235,28 +250,45 @@ class App extends Singleton
 		//return self::$config[$name] ?? (defined($name) ? constant($name) : $default); //1: from config file; 2: from predefined constant 3: from function $default parameter;
 	}
 
+	public static function SetSession(?string $key = null, ?string $value = null): void
+	{
+		if(is_null($value)) unset($_SESSION[$key]);
+		else $_SESSION[$key] = $value;
+	}
+
 	public static function IsSession(?string $key = null): bool
 	{
 		if(Str::IsEmpty($key)) return session_id() !== false;
 		else return isset($_SESSION[$key]);
 	}
 
-	public static function GetSessionID(?string $key = null): ?string
+	public static function GetSession(?string $key = null): ?string
 	{
 		if(Str::IsEmpty($key)) return session_id() ?: null; //get current session or null
 		else return $_SESSION[$key] ?? null;
 	}
 
-	public static function RemSession(): void
+	public static function RemSession(?string $key = null): void
 	{
-		session_unset(); //free all session local variables, but session id will not be destroy (like $_SESSION=[];)
-		session_regenerate_id(true); //reset session id to avoid session fixation
-		session_destroy(); //destroy all data registered to a session in storage
+		if(is_null($key))
+		{
+			session_unset(); //free all session local variables, but session id will not be destroy (like $_SESSION=[];)
+			session_regenerate_id(true); //reset session id to avoid session fixation
+			session_destroy(); //destroy all data registered to a session in storage
+		}
+		else unset($_SESSION[$key]);
 	}
 
-	public static function SetCookie(string $key, ?string $value = ''): bool
+	public static function SetCookie(string $key, ?string $value = null, ?int $minutes = null, ?string $path = null, ?bool $secure = null): bool
 	{
-		return is_null($value) ? false : setcookie($key, $value, time() + 31536000, '/'); //expire 1 year and available within the entire domain
+		$options = [];
+		$options['expires'] = is_null($minutes) ? self::Env('COOKIE_EXPIRES') : ($minutes * 60);
+		if($options['expires'] > 0) $options['expires'] += time(); 
+		$options['path'] = is_null($path) ? self::Env('COOKIE_PATH') : $path; //available within the entire domain
+		$options['secure'] = is_null($secure) ? self::Env('COOKIE_SECURE') : $secure; //cookie will only be set only over a secure HTTPS connection
+		$options['httponly'] = self::Env('COOKIE_DOMAIN');
+		$options['domain'] = self::Env('COOKIE_HTTPONLY');
+		return is_null($value) ? setcookie($key, '', -1) : setcookie($key, $value, $options); //$_COOKIE values may also exist in $_REQUEST array
 	}
 
 	public static function IsCookie(string $key): bool
