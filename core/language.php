@@ -153,7 +153,7 @@ class Language extends Singleton
 	{
 		$language = array_merge(self::$lang_default, self::$lang_active); //join - same string keys will be overwritten (numeric keys not, but will be appended !)
 		$language = array_filter($language, fn($v, $k) => is_string($k) && is_string($v), ARRAY_FILTER_USE_BOTH); //delete not string elements
-		krsort($language, SORT_NATURAL); //longer keys first
+		Arr::SortByKeyLen($language, SORT_DESC); //longer keys first
 
 		$patterns = array_keys($language); //get keys
 		if(Str::NotEmpty($prefix) || Str::NotEmpty($postfix)) array_walk($patterns, fn(&$v, $k) => $v = $prefix.$v.$postfix); //apply delimiters
@@ -195,5 +195,6 @@ Language::Initialize();
 
 class_alias('Language', 'Lang');
 
-function _(string $text, int $plural = 0): string { return Lang::Get($text, $plural); } //use function Lang::Get as _; //alias
-function _T(string $text, string $prefix = TRANSLATE_PREFIX, string $postfix = TRANSLATE_POSTFIX): string { return Lang::Translate($text, $prefix, $postfix); } //use function Lang::Translate as _T; //alias
+//function _() - alias of built-in php function gettext()
+function _L(string $text, int $plural = 0): string { return Language::Get($text, $plural); } //use function Lang::Get as _L; //alias
+function _T(string $text, string $prefix = TRANSLATE_PREFIX, string $postfix = TRANSLATE_POSTFIX): string { return Language::Translate($text, $prefix, $postfix); } //use function Lang::Translate as _T; //alias

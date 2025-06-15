@@ -179,7 +179,6 @@ class App extends Singleton
 		else if(ob_get_level()) ob_end_clean(); //turn off output buffering
 
 		//session
-		$options = [];
 		$options['lifetime'] = self::Env('SESSION_LIFETIME');
 		if($options['lifetime'] > 0) $options['lifetime'] += time(); 
 		$options['path'] = self::Env('SESSION_PATH');
@@ -188,9 +187,12 @@ class App extends Singleton
 		$options['domain'] = self::Env('SESSION_HTTPONLY');
 		session_set_cookie_params($options);
 		if(session_status() !== PHP_SESSION_ACTIVE) session_start(); //start new or resume existing session
-		$options['expires'] = $options['lifetime'];
-		unset($options['lifetime']);
-		setcookie(session_name(), session_id(), $options); //change the session expiry every time the user visits the site
+		if($options['lifetime'] > 0)
+		{
+			$options['expires'] = $options['lifetime'];
+			unset($options['lifetime']);
+			setcookie(session_name(), session_id(), $options); //change the session expiry every time the user visits the site
+		}
 	}
 
 	public static function Die(ResponseCode $code = ResponseCode::Nothing, string $string = ''): void

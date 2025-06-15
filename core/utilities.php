@@ -177,9 +177,9 @@ class Num extends Singleton
 
 class Arr extends Singleton
 {
-	public static function SortByKeyLen(array &$array, int $sort_order = SORT_DESC): bool //SORT_DESC = longer first
+	public static function SortByKeyLen(array &$array, int $order = SORT_DESC): bool //SORT_DESC = longer keys first
 	{
-		return array_multisort(array_map('strlen', array_keys($array)), $sort_order, $array); //uksort($array, create_function('$a,$b', 'return strlen($a) < strlen($b);')); (uksort is 10x slower !!!)
+		return array_multisort(array_map('strlen', array_keys($array)), $order, $array); //return uksort($array, function ($a,$b) {return strlen($b) - strlen($a);}); //almost same execution time
 	}
 
 	public static function Push(array &$array, array $add): void //add element(s)
