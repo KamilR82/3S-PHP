@@ -54,7 +54,7 @@ class Userlogin extends Singleton
 
 		//get user by session
 		$query = "SELECT `id`, TRIM(CONCAT_WS(' ', `first`, `last`)) AS `fullname` FROM `user` WHERE session = ? LIMIT 1";
-		if(!$result = DataBase::Execute($query, [App::GetSessionID()])) echo HTML::MsgBox(DataBase::GetError(), MsgBoxType::Alert);
+		if(!$result = DataBase::Execute($query, [App::GetSession()])) echo HTML::MsgBox(DataBase::GetError(), MsgBoxType::Alert);
 		if($result->num_rows)
 		{
 			self::$id = intval(DataBase::GetResultValue('id'));
@@ -73,7 +73,7 @@ class Userlogin extends Singleton
 
 	public static function Login(?string $login, ?string $password): void
 	{
-		User::Logout();
+		self::Logout();
 		
 		if(!App::IsSession()) App::Die(ResponseCode::Server_Error, 'Error: Session ID missing! Cookies disabled?');
 		
@@ -90,14 +90,14 @@ class Userlogin extends Singleton
 				if(password_verify($password, $hash))
 				{
 					$query = "UPDATE `user` SET `activity` = NOW(), `session` = ? WHERE `id` = ? LIMIT 1";
-					if(!DataBase::Execute($query, [App::GetSessionID(), $id])) echo HTML::MsgBox(DataBase::GetError(), MsgBoxType::Alert);
+					if(!DataBase::Execute($query, [App::GetSession(), $id])) echo HTML::MsgBox(DataBase::GetError(), MsgBoxType::Alert);
 					Request::Redirect(); //user data load after redirect
 				}
 			}
 		}
 		//somethings wrong
 		sleep(1); //wait a second
-		echo HTML::MsgBox(Lang::Get('wrong_login'), MsgBoxType::Warning);
+		echo HTML::MsgBox(Language::Get('wrong_login'), MsgBoxType::Warning);
 	}
 
 	public static function Password(string $old, string $new, string $retry): bool
@@ -118,25 +118,25 @@ class Userlogin extends Singleton
 						if(!DataBase::Execute($query, [$hash, self::$id])) echo HTML::MsgBox(DataBase::GetError(), MsgBoxType::Alert);
 						elseif(DataBase::AffectedRows())
 						{
-							echo HTML::MsgBox(Lang::Get('password_changed'), MsgBoxType::Success);
+							echo HTML::MsgBox(Language::Get('password_changed'), MsgBoxType::Success);
 							return true;
 						}
-						else echo HTML::MsgBox(Lang::Get('password_not_changed'), MsgBoxType::Alert);
+						else echo HTML::MsgBox(Language::Get('password_not_changed'), MsgBoxType::Alert);
 					}
-					else echo HTML::MsgBox(Lang::Get('password_not_equal'), MsgBoxType::Warning);					
+					else echo HTML::MsgBox(Language::Get('password_not_equal'), MsgBoxType::Warning);					
 				}
-				else echo HTML::MsgBox(Lang::Get('wrong_password'), MsgBoxType::Alert);
+				else echo HTML::MsgBox(Language::Get('wrong_password'), MsgBoxType::Alert);
 			}
-			else echo HTML::MsgBox(Lang::Get('wrong_account'), MsgBoxType::Warning);
+			else echo HTML::MsgBox(Language::Get('wrong_account'), MsgBoxType::Warning);
 		}
-		else echo HTML::MsgBox(Lang::Get('password_empty'), MsgBoxType::Alert);
+		else echo HTML::MsgBox(Language::Get('password_empty'), MsgBoxType::Alert);
 
 		return false;
 	}
 
 	public static function PasswordReset(?int $id = null): bool
 	{
-		if(User::GetPermission(Permits::Admin) & PermitLevel::Write->value)
+		if(self::GetPermission(Permits::Admin) & PermitLevel::Write->value)
 		{
 			if(is_null($id)) $id = self::$id;
 
@@ -150,20 +150,20 @@ class Userlogin extends Singleton
 				if(!DataBase::Execute($query, [$hash, $id])) echo HTML::MsgBox(DataBase::GetError(), MsgBoxType::Alert);
 				elseif(DataBase::AffectedRows())
 				{
-					echo HTML::MsgBox(Lang::Get('password_reset'), MsgBoxType::Success);
+					echo HTML::MsgBox(Language::Get('password_reset'), MsgBoxType::Success);
 					return true;
 				}
-				else echo HTML::MsgBox(Lang::Get('password_not_changed'), MsgBoxType::Alert);
+				else echo HTML::MsgBox(Language::Get('password_not_changed'), MsgBoxType::Alert);
 			}
 		}
-		else echo HTML::MsgBox(Lang::Get('write'), MsgBoxType::Alert);
+		else echo HTML::MsgBox(Language::Get('write'), MsgBoxType::Alert);
 
 		return false;
 	}
 
 	public static function PasswordRemove(?int $id = null): bool
 	{
-		if(User::GetPermission(Permits::Admin) & PermitLevel::Write->value)
+		if(self::GetPermission(Permits::Admin) & PermitLevel::Write->value)
 		{
 			if(is_null($id)) $id = self::$id;
 
@@ -171,19 +171,19 @@ class Userlogin extends Singleton
 			if(!DataBase::Execute($query, [$id])) echo HTML::MsgBox(DataBase::GetError(), MsgBoxType::Alert);
 			elseif(DataBase::AffectedRows())
 			{
-				echo HTML::MsgBox(Lang::Get('password_off'), MsgBoxType::Success);
+				echo HTML::MsgBox(Language::Get('password_off'), MsgBoxType::Success);
 				return true;
 			}
-			else echo HTML::MsgBox(Lang::Get('password_not_changed'), MsgBoxType::Alert);
+			else echo HTML::MsgBox(Language::Get('password_not_changed'), MsgBoxType::Alert);
 		}
-		else echo HTML::MsgBox(Lang::Get('write'), MsgBoxType::Alert);
+		else echo HTML::MsgBox(Language::Get('write'), MsgBoxType::Alert);
 
 		return false;
 	}
 
 	public static function Logout(): void
 	{
-		if(User::IsLoggedIn())
+		if(self::IsLoggedIn())
 		{
 			$query = "UPDATE `user` SET `activity` = NOW(), `session` = NULL WHERE `id` = ? LIMIT 1";
 			if(!DataBase::Execute($query, [self::$id])) echo HTML::MsgBox(DataBase::GetError(), MsgBoxType::Alert);
@@ -286,10 +286,10 @@ class Userlogin extends Singleton
 					switch(count($value))
 					{
 						case 3: //has Permits
-							if(!User::GetPermission($value[2])) unset($menu[$key]);
+							if(!self::GetPermission($value[2])) unset($menu[$key]);
 							break;
 						case 4: //has Permits & PermitLevel
-							if(!(User::GetPermission($value[2]) & $value[3]->value)) unset($menu[$key]);
+							if(!(self::GetPermission($value[2]) & $value[3]->value)) unset($menu[$key]);
 							break;
 					}
 				}

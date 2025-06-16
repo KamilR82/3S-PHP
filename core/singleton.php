@@ -321,4 +321,4 @@ App::Initialize();
 
 Request::ParseExpected($params ?? [], $defaults ?? []); //initialize request class and parse params with defaults
 
-if(App::IsCookie('language')) Lang::Set(App::GetCookie('language')); //set language from cookie
+if(App::IsCookie('language')) Language::Set(App::GetCookie('language')); //set language from cookie

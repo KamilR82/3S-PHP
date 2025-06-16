@@ -61,38 +61,37 @@ trait HypertextCommon //only most used
 
 	public static function Meta(array $attributes = []): string //metadata (information data) about an HTML document
 	{
-		return self::Tag('meta', null, $attributes);
+		return self::Tag('meta', $attributes);
 	}
 
 	public static function Link(array $attributes = []): string //defines the relationship between the current document and an external resource (style sheets or to add a favicon)
 	{
-		return self::Tag('link', null, $attributes);
+		return self::Tag('link', $attributes);
 	}
 
 	public static function Base(string $href, string $target = '_blank'): string //specifies the base URL and/or target for all relative URLs
 	{
-		return self::Tag('base', null, ['href' => $href, 'target' => $target]);
+		return self::Tag('base', ['href' => $href, 'target' => $target]);
 	}
 
 	//Singular Tags (only for body)
 
 	public static function Br(?string $id = null, ?string $class = null): string //single line break
 	{
-		return self::Tag('br', null, ['id' => $id, 'class' => $class]);
+		return self::Tag('br', ['id' => $id, 'class' => $class]);
 	}
 
 	public static function Hr(?string $id = null, ?string $class = null): string //horizontal rule - defines a thematic break
 	{
-		return self::Tag('hr', null, [ 'id' => $id, 'class' => $class]);
+		return self::Tag('hr', [ 'id' => $id, 'class' => $class]);
 	}
 
-	public static function Img(string $source, string $caption = '', null|string|int $width = null, null|string|int $height = null, ?string $id = null, ?string $class = null): string //Image
+	public static function Img(string $source, string $alt = '', null|string|int $width = null, null|string|int $height = null, ?string $id = null, ?string $class = null): string //Image
 	{
-		if(is_null($height) && !is_null($width)) $height = $width; //default ratio 1:1
-		return self::Tag('img', null, ['src' => $source, 'alt' => $caption, 'width' => $width, 'height' => $height, 'id' => $id, 'class' => $class]);
+		return self::Tag('img', ['src' => $source, 'alt' => $alt, 'width' => $width, 'height' => $height, 'id' => $id, 'class' => $class]);
 	}
 
-	//Paired Tags (main)
+	//HTML::Tag Tags (main)
 
 	public static function Html(bool|string $content = true, ?string $lang = null, ?string $id = null, ?string $class = null): string //root of an HTML document
 	{
@@ -129,7 +128,7 @@ trait HypertextCommon //only most used
 		return self::Tag('footer', $content, ['id' => $id, 'class' => $class]);
 	}
 
-	//Paired Tags
+	//HTML::Tag Tags
 
 	public static function Section(bool|string $content = true, ?string $id = null, ?string $class = null): string //block document section
 	{
@@ -207,7 +206,7 @@ trait HypertextCommon //only most used
 		return self::Tag('label', $content, ['for' => $for, 'title' => $tooltip]);
 	}
 
-	//Paired Tags (lists)
+	//HTML::Tag Tags (lists)
 
 	public static function Menu(bool|string $content = true, ?string $id = null, ?string $class = null): string //unordered list (same as UL)
 	{
@@ -244,7 +243,7 @@ trait HypertextCommon //only most used
 		return self::Tag('dd', $content, ['id' => $id, 'class' => $class]);
 	}
 
-	//Paired Tags (others)
+	//HTML::Tag Tags (others)
 
 	public static function Em(bool|string $content = true, ?string $id = null, ?string $class = null): string //inline emphasized (italic)
 	{
@@ -555,17 +554,28 @@ class HTML extends Singleton
 	//true - paired tag - only open element - <$name>
 	//false - paired tag - only close element - </$name> - attributes are ignored
 	//'string' - complete paired tag - <$name>$content</$name>
-	public static function Tag(array|string $name, null|bool|string $content = null, array $attributes = [], string $additional = ''): string
+	public static function Tag(string $name, mixed ...$data): string
 	{
-		if(is_array($name)) //more tags at once
+		//extract atributes
+		$attrib = [];
+		foreach($data as $key => $val)
 		{
-			$output = '';
-			foreach($name as $chunk) $output .= self::Tag($chunk, $content, $attributes, $additional); //recursive parse tags
-			return $output;
+			if(is_array($val))
+			{
+				if(!array_is_list($val)) $attrib = array_merge($attrib, $val); //add to atributes
+				unset($data[$key]); //remove attrib from content
+			}
 		}
-
+		$data = array_values($data); //reindex array keys
+		//get content
+		$content = null;
+		if(count($data) > 0)
+		{
+			if(is_bool($data[0])) $content = $data[0];
+			else $content = implode('', $data);
+		}
+		//make output
 		$output = '';
-
 		if($content === false) //closing paired tag(s)
 		{
 			if(Str::IsEmpty($name) || in_array($name, self::$open_tags)) //tag open?
@@ -587,8 +597,7 @@ class HTML extends Singleton
 				if(App::Env('APP_DEBUG')) $output .= PHP_EOL . str_repeat("\t", count(self::$open_tags)); //pretty print for debug HTML code
 
 				$output .= '<'.$name;
-				foreach($attributes as $key => $val) if(!is_null($val)) $output .= ' '.$key.'="'.$val.'"'; //value can be empty, but null is discarded
-				if(Str::NotEmpty($additional)) $output .= ' '.trim($additional);
+				foreach($attrib as $key => $val) if(!is_null($val)) $output .= ' '.$key.'="'.$val.'"'; //value can be empty, but null is discarded
 
 				if(is_null($content)) $output .= ' /'; //Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
 				$output .= '>';
@@ -895,3 +904,95 @@ class Page extends Singleton
 }
 
 Page::Initialize();
+
+class_alias('Page', '_P');
+class_alias('HTML', '_H');
+
+//html tag aliases
+function title(string $data): string { return HTML::Tag(__FUNCTION__, $data); }
+function script(string $data): string { return HTML::Tag(__FUNCTION__, $data); }
+function noscript(string $data = 'Your browser does not support JavaScript!'): string { return HTML::Tag(__FUNCTION__, $data); }
+
+function base(array $attrib = []): string { return HTML::Tag(__FUNCTION__, $attrib); }
+function lnk(array $attrib = []): string { return HTML::Tag(__FUNCTION__, $attrib); } //link used by php
+function meta(array $attrib = []): string { return HTML::Tag(__FUNCTION__, $attrib); }
+
+function html(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function head(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function style(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function body(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function headr(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); } //header used by php
+function nav(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function main(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function footer(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+
+function section(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function article(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function div(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function p(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function pre(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function blockquote(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function figure(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function figcaption(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function span(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function code(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function h1(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function h2(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function h3(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function h4(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function h5(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function h6(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function i(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function a(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function b(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function em(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function strong(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function small(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function sub(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function sup(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function s(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function q(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function mark(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+
+function menu(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function ul(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function ol(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function li(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function dl(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function dt(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function dd(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+
+function table(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function caption(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function colgroup(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function col(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function thead(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function tbody(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function tfoot(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function tr(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function th(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function td(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+
+function form(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function fieldset(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function legend(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function label(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function button(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function select(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function option(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function optgroup(mixed ...$data): string { return HTML::Tag(__FUNCTION__, ...$data); }
+function input(array $attrib = []): string { return HTML::Tag(__FUNCTION__, $attrib); }
+
+function br(array $attrib = []): string { return HTML::Tag(__FUNCTION__, $attrib); }
+function hr(array $attrib = []): string { return HTML::Tag(__FUNCTION__, $attrib); }
+function img(string|array $src, null|string|array $alt = null, null|string|int $w = null, null|string|int $h = null): string
+{
+	$attrib = [];
+	if(is_array($src)) $attrib = array_merge($attrib, $src);
+	elseif(is_string($src)) $attrib['src'] = $src;
+	if(is_array($alt)) $attrib = array_merge($attrib, $alt);
+	elseif(is_string($alt)) $attrib['alt'] = $alt;
+	if(Any::NotEmpty($w)) $attrib['width'] = $h;
+	if(Any::NotEmpty($h)) $attrib['height'] = $h;
+	return isset($attrib['src']) ? HTML::Tag(__FUNCTION__, $attrib) : '';
+}

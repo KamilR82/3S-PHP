@@ -48,7 +48,7 @@ class Logger extends Singleton
 
 		$text = date('Y-m-d H:i:s');
 		$text .= "\t[".Request::GetClientIP().']';
-		if(User::GetUserID()) $text .= "\t(".User::GetUserID().') '.User::GetFullName();
+		if(Userlogin::GetUserID()) $text .= "\t(".Userlogin::GetUserID().') '.Userlogin::GetFullName();
 		$text .= "\t[{$type}] {$filename}:{$errline}\t{$errstr}";
 		$text .= PHP_EOL;
 
@@ -62,15 +62,15 @@ class Logger extends Singleton
 	{
 		if(!is_dir(self::$directory)) return;
 		if(!App::Env('LOG_EMPTY') && count($strings) && Any::IsEmpty($strings[0])) return; //dont log random hits
-		if(!App::Env('LOG_USER_UNKNOWN') && !User::IsLoggedIn()) return; //dont log unknown users (not logged in)
-		if(!App::Env('LOG_USER_REGISTERED') && User::IsLoggedIn()) return; //dont log logged in users
-		if(!App::Env('APP_DEBUG') && User::IsLoggedIn() && User::GetPermission(Permits::Admin)) return; //dont log admin (for security reasons)
+		if(!App::Env('LOG_USER_UNKNOWN') && !Userlogin::IsLoggedIn()) return; //dont log unknown users (not logged in)
+		if(!App::Env('LOG_USER_REGISTERED') && Userlogin::IsLoggedIn()) return; //dont log logged in users
+		if(!App::Env('APP_DEBUG') && Userlogin::IsLoggedIn() && Userlogin::GetPermission(Permits::Admin)) return; //dont log admin (for security reasons)
 
 		if(App::Env('LOG_FILE'))
 		{
 			$text = date('Y-m-d H:i:s'); //timestamp
 			$text .= "\t[".Request::GetClientIP().']'; //client ip
-			$text .= "\t(".(User::IsLoggedIn()?User::GetUserID():'-').')'; //user id
+			$text .= "\t(".(Userlogin::IsLoggedIn()?Userlogin::GetUserID():'-').')'; //user id
 			$text .= "\t[{$type}]";
 			foreach($strings as $piece) if(Any::NotEmpty($piece)) $text .= "\t".$piece;
 			$text .= PHP_EOL;

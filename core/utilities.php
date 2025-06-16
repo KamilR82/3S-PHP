@@ -65,12 +65,12 @@ class Str extends Singleton
 {
 	public static function IsEmpty(?string $value, bool $trim = true): bool
 	{
-		return $value === null || ($trim ? trim($value) : $value) === ''; //like empty()
+		return $value === null || ($trim ? trim($value) : $value) === '';
 	}
 
 	public static function NotEmpty(?string $value, bool $trim = true): bool
 	{
-		return $value !== null && ($trim ? trim($value) : $value) !== ''; //like !empty()
+		return $value !== null && ($trim ? trim($value) : $value) !== '';
 	}
 
 	public static function Length(?string $str, bool $trim = true): int
@@ -257,7 +257,7 @@ class DT extends Singleton //Date & Time
 		{
 			if(Str::NotEmpty($modify)) date_modify($date, $modify); //'+1 week' etc
 			$output_date = date_format($date, $format);
-			return Lang::Date($output_date);
+			return Language::Date($output_date);
 		}
 		else return $invalid;
 	}
@@ -294,7 +294,7 @@ class DT extends Singleton //Date & Time
 				$hours = intval(floor($seconds / 3600));
 				$days = intval(floor($hours / 24));
 				$hours %= 24;
-				$output = sprintf('%d %s', $days, Lang::Get('day', $days));
+				$output = sprintf('%d %s', $days, Language::Get('day', $days));
 				if($hours) $output .= sprintf(' %02d h', $hours);
 			}
 			else //less than 2 days
@@ -314,7 +314,7 @@ class DT extends Singleton //Date & Time
 		$output = '';
 		if(!is_null($days))
 		{
-			if($days == 0) return sprintf('%d %s', $days, Lang::Get('day', $days));
+			if($days == 0) return sprintf('%d %s', $days, Language::Get('day', $days));
 
 			if($days < 0)
 			{
@@ -325,16 +325,16 @@ class DT extends Singleton //Date & Time
 			if($days >= 730) //2 or more years (2*365)
 			{
 				$years = intval(floor($days / 365)); //$years = round($days / 365, 1);
-				$output = sprintf('%d %s', $years, Lang::Get('year', $years)); //return sprintf('%.1f %s', $years, Lang::Get('year', $years));
+				$output = sprintf('%d %s', $years, Language::Get('year', $years)); //return sprintf('%.1f %s', $years, Language::Get('year', $years));
 			}
 			elseif($days >= 56) //2 or more months (2*4*7)
 			{
 				$months = intval(floor($days / 28)); //$months = round($days / 28, 1);
-				$output = sprintf('%d %s', $months, Lang::Get('month', $months)); //return sprintf('%.1f %s', $months, Lang::Get('month', $months));
+				$output = sprintf('%d %s', $months, Language::Get('month', $months)); //return sprintf('%.1f %s', $months, Language::Get('month', $months));
 			}
 			else
 			{
-				$output = sprintf('%d %s', $days, Lang::Get('day', $days));
+				$output = sprintf('%d %s', $days, Language::Get('day', $days));
 			}
 		}
 		if($negative) $output = '-'.$output; //dont use &minus;

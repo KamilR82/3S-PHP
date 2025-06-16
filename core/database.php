@@ -55,7 +55,7 @@ class DataBase extends Singleton
 
     public static function Connect(?string $db_database = null, ?string $db_username = null, ?string $db_password = null, ?string $db_host = null, ?int $db_port = null, ?string $db_socket = '/run/mysqld/mysqld10.sock', ?int $timeout = null): void
     {
-		if(Any::IsEmpty($db_database) || Any::IsEmpty($db_username) || Any::IsEmpty($db_password)) App::Die(ResponseCode::Unauthorized, 'DB Error: Missing access data! Set database, username and password.');
+		if(Str::IsEmpty($db_database) || Str::IsEmpty($db_username) || Str::IsEmpty($db_password)) App::Die(ResponseCode::Unauthorized, 'DB Error: Missing access data! Set database, username and password.');
 
 		try {
 			if(is_int($timeout)) self::$mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, $timeout) or App::Die(ResponseCode::Server_Error, 'DB Error: Setting MYSQLI_OPT_CONNECT_TIMEOUT failed'); //for TCP/IP connections
@@ -74,7 +74,7 @@ class DataBase extends Singleton
 			is_null($value) => 'NULL', //Any::IsEmpty($value) => 'NULL',
 			is_int($value), is_float($value) => strval($value),
 			is_string($value) => $escaped ? "'".self::$mysqli->real_escape_string(strval($value))."'" : self::$mysqli->real_escape_string(strval($value)), 
-			is_array($value) => self::Serialize($value), //multidimensional array (not needed)
+			is_array($value) => self::Serialize($value), //multidimensional array
 			default => '?', //unknown
 		};
 	}
@@ -116,9 +116,14 @@ class DataBase extends Singleton
 		self::$query_semi = $query;
 	}
 
+	public static function Bind(array $bind): mysqli_result|bool
+	{
+		return self::Execute(null, $bind);
+	}
+
 	public static function Execute(?string $query = null, ?array $bind = null): mysqli_result|bool
 	{
-		if(Any::IsEmpty($query)) $query = self::$query_semi; //use last query
+		if(Str::IsEmpty($query)) $query = self::$query_semi; //use last query
 		else self::$query_semi = $query; //set new query
 
 		if(!empty($bind))
@@ -211,9 +216,9 @@ class DataBase extends Singleton
 		return null;
 	}
 
-	public static function FindFirst(string $table, null|string|int $value, string $column = 'id'): ?string //looking for cell value and return row first cell (probably ID) or null
+	public static function FindFirst(string $table, null|string|int|float $value, string $column = 'id'): ?string //looking for cell value and return row first cell (probably ID) or null
 	{
-		if(Any::NotEmpty($value)) if(self::Query("SELECT * FROM `$table` WHERE", [$column => $value], "LIMIT 1")) return self::GetResultValue();
+		if(Any::NotEmpty($value)) if(self::Query("SELECT * FROM `{$table}` WHERE", [$column => $value], "LIMIT 1")) return self::GetResultValue();
 		return null;
 	}
 
@@ -226,3 +231,4 @@ class DataBase extends Singleton
 DataBase::Initialize();
 
 class_alias('DataBase', 'DB');
+class_alias('DataBase', '_D');

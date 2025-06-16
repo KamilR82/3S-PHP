@@ -23,7 +23,7 @@ class Request extends Singleton //Uniform Resource Locator
 	{
 		self::$secured = Any::ToBoolOnly($_SERVER['HTTPS'] ?? false) || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null) === 'https');
 		self::$method = $_SERVER['REQUEST_METHOD']; //GET / POST
-		self::$server = $_SERVER['HTTP_HOST'] ?? self::Env('APP_SERVER');
+		self::$server = $_SERVER['HTTP_HOST'] ?? App::Env('APP_SERVER');
 		self::$filename = basename($_SERVER['SCRIPT_NAME']); //same as PHP_SELF
 		self::$request = $_SERVER['REQUEST_URI'] ?? $_SERVER['SCRIPT_NAME']; //SCRIPT_NAME + QUERY_STRING
 		if(substr(self::$request, -1) === '/') self::$request = self::$filename; //index.php is '' and then REQUEST_URI ending with '/'
@@ -36,16 +36,16 @@ class Request extends Singleton //Uniform Resource Locator
 			getenv('REMOTE_ADDR', true) ?:
 			getenv('REMOTE_ADDR');
 		self::$languages = self::ParseQuality($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? []); //detects a users language based on the Accept-Language header coming from the browser
-		if(!empty(self::$languages)) Lang::Set(self::$languages); //try to set language
+		if(!empty(self::$languages)) Language::Set(self::$languages); //try to set language
 
 		//PROTECTION against DOUBLE POSTING FORM (back button, more tabs, refresh, ...)
 		if(self::$method === 'POST' && isset($_POST['token']))
 		{
 			if(isset($_SESSION['token']))
 			{
-				if($_POST['token'] !== $_SESSION['token']) App::Die(ResponseCode::Bad_Request, Lang::Get('form_valid'));
+				if($_POST['token'] !== $_SESSION['token']) App::Die(ResponseCode::Bad_Request, Language::Get('form_valid'));
 			}
-			else App::Die(ResponseCode::Bad_Request, Lang::Get('form_token'));
+			else App::Die(ResponseCode::Bad_Request, Language::Get('form_token'));
 		}
 		self::$token = $_SESSION['token'] = md5(uniqid(random_bytes(12), more_entropy: true)); //generate & save new token
 	}
