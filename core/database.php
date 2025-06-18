@@ -231,4 +231,3 @@ class DataBase extends Singleton
 DataBase::Initialize();
 
 class_alias('DataBase', 'DB');
-class_alias('DataBase', '_D');

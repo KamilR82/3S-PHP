@@ -141,22 +141,6 @@ class App extends Singleton
 {
 	const extension = '.php'; //for class files
 
-	/** @var array<string, string> $classmap */
-	private static array $classmap = array(
-		'Any' => 'utilities', 
-		'Num' => 'utilities', 
-		'Str' => 'utilities', 
-		'Arr' => 'utilities', 
-		'DT' => 'utilities', 
-		'Req' => 'request', 
-		'Page' => 'hypertext',
-		'HTML' => 'hypertext',
-		'Lang' => 'language', 
-		'Log' => 'logger',
-		'DB' => 'database',
-		'User' => 'userlogin', 
-	);
-
 	/** @var array<string, mixed> $config */
 	private static array|false $config = false;
 
@@ -305,7 +289,16 @@ class App extends Singleton
 
 	public static function Autoload(string $class): void
 	{
-		$filename = __DIR__ . DIRECTORY_SEPARATOR . strtolower(self::$classmap[$class] ?? $class) . self::extension;
+		$filename = __DIR__ . DIRECTORY_SEPARATOR . strtolower(match($class) {
+			'Any', 'Num', 'Str', 'Arr', 'DT' => 'utilities', 
+			'Request', 'Req' => 'request', 
+			'Page', 'HTML' => 'hypertext',
+			'Language', 'Lang' => 'language', 
+			'Logger', 'Log' => 'logger',
+			'DataBase', 'DB' => 'database',
+			'Userlogin', 'User' => 'userlogin', 
+			default => 'class_'.$class,
+		}) . self::extension;
 		if(file_exists($filename)) require_once($filename);
 		else self::Die(ResponseCode::Not_Found, 'Not Found! Class or trait `'.$class.'` is missing!');
 	}

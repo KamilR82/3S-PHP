@@ -154,7 +154,7 @@ class Request extends Singleton //Uniform Resource Locator
 		else return isset(self::$params[$parameter]); //after ParseExpected
 	}
 
-	public static function IsPost(?string $parameter = 'sent'): bool
+	public static function IsPost(?string $parameter = 'submit'): bool
 	{
 		if(Any::IsEmpty($parameter)) return self::$method === 'POST';
 		else return isset($_POST[$parameter]);

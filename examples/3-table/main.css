@@ -1,0 +1,18 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+	font-family: arial, helvetica, sans-serif;
+	line-height: 1.6;
+	color: #333;
+	background-color: #fff;
+}
+
+h1, h2, h3, p, section { margin-bottom: 1em; }
+
+table, th, td {
+	border: 1px solid #333;
+}
+
+th, td {
+	padding: 5px 15px;
+}
