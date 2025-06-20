@@ -292,7 +292,7 @@ class App extends Singleton
 		$filename = __DIR__ . DIRECTORY_SEPARATOR . strtolower(match($class) {
 			'Any', 'Num', 'Str', 'Arr', 'DT' => 'utilities', 
 			'Request', 'Req' => 'request', 
-			'Page', 'HTML' => 'hypertext',
+			'Page', 'Queue' => 'hypertext',
 			'Language', 'Lang' => 'language', 
 			'Logger', 'Log' => 'logger',
 			'DataBase', 'DB' => 'database',

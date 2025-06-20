@@ -4,14 +4,14 @@ define('CONFIG_FILE', './../config.php'); //load config file (supported types .i
 require_once($_SERVER['DOCUMENT_ROOT'].'/core/singleton.php'); //initialize framework
 
 Page::Style('main.css'); //add page style
-
-HTML::Initialize('Table Example'); //set page title
+Page::Start('Table Example'); //set page title
 
 //heading
 echo h1(Page::Title()); //get page title
 
 //table
 $table = new Table('Table', class: 'table_class'); //caption
+$table->Caption('Renamed Caption', class: 'caption_class'); //renamed caption
 $table->ColGroup(2, 'column_class'); //applying styles to entire columns
 $table->Head(['1st', '2nd', '3th', '4th']); //head row
 $table->Head(['1st', '2nd', '3th', '4th']); //head row

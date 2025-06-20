@@ -11,7 +11,7 @@ enum Method: string
 
 class Form
 {
-	use Patterns;
+	use Patterns; //pattern date missing !!!
 
 	private array $form_attrib = [
 		'method' => null, //The default HTTP method when submitting form data is GET (NEVER use GET to send sensitive data!)
@@ -21,14 +21,15 @@ class Form
 		'onsubmit' => null,
 	];
 
-	private array $fieldsets = array([]); //2D list
 	private int $fieldset = 0; //current
+	private array $fieldsets = []; //list of queues
 
 	public function __construct(Method $method = Method::Get, ?string $action = null, ?string $target = null, ?string $class = null, ?string $id = null)
 	{
 		$method = $method->value; //convert object to string
 		$this->form_attrib = array_merge($this->form_attrib, compact('action', 'method', 'target', 'class', 'id'));
 		if(strcasecmp($this->form_attrib['method'], 'post')) $this->form_attrib['enctype'] = 'multipart/form-data'; //this value is necessary if the user will upload a file through the form
+		$this->fieldset();
 	}
 
 	public function onsubmit(?string $onsubmit = 'return checkForm(this);'): void
@@ -49,174 +50,197 @@ class Form
 		elseif(($key = array_search('novalidate', $this->form_attrib)) !== false) unset($this->form_attrib[$key]);
 	}
 
-	public function fieldset(int $index = 0): void
+	public function fieldset(int $index = 0, int|array $rem_or_attrib = 0): object
 	{
-		if(!isset($this->fieldsets[$index])) $this->fieldsets[$index] = array();
-		$this->fieldset = $index;
+		if(is_int($rem_or_attrib)) unset($this->fieldsets[$rem_or_attrib]); //remove fieldset
+		if(!isset($this->fieldsets[$index])) $this->fieldsets[$index] = new Queue();
+		if($index > 0) $this->fieldsets[$index]->first('fieldset', true, is_array($rem_or_attrib) ? $rem_or_attrib : []); //add or replace fieldset with attributes
+		$this->fieldset = $index; //set pointer
+		return $this;
 	}
 
 	//input
 
-	public function add(string ...$data): void
+	public function add(string $name, mixed ...$data): object
 	{
-		array_push($this->fieldsets[$this->fieldset], implode('', $data));
+		$this->fieldsets[$this->fieldset]->add($name, ...$data);
+		return $this;
 	}
 
-	public function Legend(string $caption): void
+	public function legend(string $caption): object
 	{
-		$this->add(legend($caption));
+		return $this->add('legend', $caption);
 	}
 
-	public function Label(string $caption, ?string $for = null, ?string $tooltip = null, bool $colon = true): void
+	public function label(string $caption, ?string $for = null, ?string $tooltip = null, bool $colon = true): object
 	{ //label can also be bound to an element by placing the element inside the <label> element, then no need bind to inout id
 		if($colon) $caption .= match(mb_substr($caption, -1)) {'.','!','?',':',';','>' => '', default => ':',}; //add colon
-		$this->add(label(['for'=>$for, 'title' => $tooltip], $caption));
+		return $this->add('label', ['for'=>$for, 'title' => $tooltip], $caption);
 	}
 
-	public function Submit(string $caption = 'Submit', string $name = 'submit'): void
+	public function submit(string $caption = 'Submit', string $name = 'submit'): object
 	{
-		$this->add(input(['type'=>'submit', 'name'=>$name, 'id'=>$name, 'value'=>$caption]));
+		return $this->add('input', ['type'=>'submit', 'name'=>$name, 'id'=>$name, 'value'=>$caption]);
 	}
 
-	public function Reset(string $caption = 'Reload', string $name = 'reload', string $location = ''): void //don't set name='reset' because JS function reset() will not work !!!
+	public function reset(string $caption = 'Reload', string $name = 'reload', string $location = ''): object //don't set name='reset' because JS function reset() will not work !!!
 	{
-		$this->add(input(['type'=>'reset', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>'window.location=\''.Request::GetFileName($location).'\';']));
+		return $this->add('input', ['type'=>'reset', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>'window.location=\''.Request::GetFileName($location).'\';']);
 	}
 
-	public function Clear(string $caption = 'Clear', string $name = 'clear'): void
+	public function clear(string $caption = 'Clear', string $name = 'clear'): object
 	{
 		//JS function reset() does not work if form contains any field with attribute name='reset' !!!
-		$this->add(input(['type'=>'button', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>'this.parentNode.parentNode.reset();'])); //form.reset();
+		return $this->add('input', ['type'=>'button', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>"this.closest('form').reset();"]); //'this.parentNode.parentNode.reset();'
 	}
 
-	public function Button(string $caption = 'Press', string $name = 'press', ?string $onclick = null): void
+	public function button(string $caption = 'Press', string $name = 'press', ?string $onclick = null): object
 	{
-		$this->add(input(['type'=>'button', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>$onclick])); //"navigator.clipboard.writeText('".$value."');" etc.
+		return $this->add('input', ['type'=>'button', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>$onclick]); //"navigator.clipboard.writeText('".$value."');" etc.
 	}
 
-	public function File(string $name = 'file', string $accept = 'text/xml'): void
+	public function file(string $name = 'file', string $accept = 'text/xml'): object
 	{
-		$this->add(input(['type'=>'file', 'name'=>$name, 'id'=>$name, 'accept'=>$accept]));
+		return $this->add('input', ['type'=>'file', 'name'=>$name, 'id'=>$name, 'accept'=>$accept]);
 	}
 
-	public function Hidden(string $name = 'file', ?string $value = null): void
+	public function hidden(string $name = 'file', ?string $value = null): object
 	{
-		$this->add(input(['type'=>'hidden', 'name'=>$name, 'id'=>$name, 'value' => $value]));
+		return $this->add('input', ['type'=>'hidden', 'name'=>$name, 'id'=>$name, 'value' => $value]);
 	}
 
-	public function CheckBox(string $name, ?string $value = null, bool $readonly = false, array $attrib = []): void
-	{
-		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
-		$this->add(HTML::Tag('input', ['type' => 'checkbox', 'name' => $name, 'id' => $name, 'value' => 1, 'readonly' => $readonly, 'checked' => Any::ToBoolOnly($value)], $attrib)); //without value sends $name="on"
-	}
-
-	public function Email(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void
+	public function checkbox(string $name, ?string $value = null, bool $readonly = false, array $attrib = []): object
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
-		$value = Str::Sanitize($value);
-		$this->add(HTML::Tag('input', ['type' => 'email', 'name' => $name, 'id' => $name, 'value' => $value, 'pattern' => self::pattern_email, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib));
+		return $this->add('input', ['type' => 'checkbox', 'name' => $name, 'id' => $name, 'value' => 1, 'readonly' => $readonly, 'checked' => Any::ToBoolOnly($value)], $attrib); //without value sends $name="on"
 	}
 
-	public function Password(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void
+	public function email(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
 		$value = Str::Sanitize($value);
-		$this->add(HTML::Tag('input', ['type' => 'password', 'name' => $name, 'id' => $name, 'value' => $value, 'pattern' => self::pattern_password, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib));
+		return $this->add('input', ['type' => 'email', 'name' => $name, 'id' => $name, 'value' => $value, 'pattern' => self::pattern_email, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib);
 	}
 
-	public function Area(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void
+	public function password(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object
+	{
+		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
+		$value = Str::Sanitize($value);
+		return $this->add('input', ['type' => 'password', 'name' => $name, 'id' => $name, 'value' => $value, 'pattern' => self::pattern_password, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib);
+	}
+
+	public function area(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
 		$value = strval(Str::Sanitize($value)); //strval convert null to empty string (need for paired tag)
-		$this->add(HTML::Tag('textarea', $value, ['name' => $name, 'id' => $name, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib));
+		return $this->add('textarea', $value, ['name' => $name, 'id' => $name, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib);
 	}
 
-	public function ComboBox(string $name, array $values, ?string $value = null, bool $readonly = false, bool $required = false, array $attrib = []): void //select/option
+	public function combobox(string $name, array $values, ?string $value = null, bool $readonly = false, bool $required = false, array $attrib = []): object //select/option
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
 		$value = strval($value); //strval convert null to empty string (for strcmp)
-		$output = HTML::Tag('select', true, ['name' => $name, 'id' => $name, 'required' => $required, 'readonly' => $readonly], $attrib); //open
+		$this->add('select', true, ['name' => $name, 'id' => $name, 'required' => $required, 'readonly' => $readonly], $attrib); //open
 		foreach($values as $key => $val)
 		{
 			if(is_null($val)) continue; //value can be empty, but null is discarded
 			$key = strval($key); //strval convert null to empty string (for strcmp)
 			$val = strval(Str::Sanitize($val)); //strval convert null to empty string (need for paired tag)
-			$output .= HTML::Tag('option', $val, ['value' => $key], (strcmp($key, $value) == 0) ? ['selected'] : ($readonly || ($required && Str::IsEmpty($key)) ? ['disabled'] : []));
+			$this->add('option', $val, ['value' => $key], (strcmp($key, $value) == 0) ? ['selected'] : ($readonly || ($required && Str::IsEmpty($key)) ? ['disabled'] : []));
 		}
-		$output .= HTML::Tag('select', false); //close
-		$this->add($output);
+		return $this->add('select', false); //close
 	}
 
-	public function Text(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void //e.g. maxlength="64"
+	public function radio(string $name, array $values, ?string $value = null, bool $readonly = false, bool $required = false, array $attrib = []): object
+	{
+		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
+		$value = strval($value); //strval convert null to empty string (for strcmp)
+		foreach($values as $key => $val)
+		{
+			if(is_null($val)) continue; //value can be empty, but null is discarded
+			$key = strval($key); //strval convert null to empty string (for strcmp)
+			$val = strval(Str::Sanitize($val)); //strval convert null to empty string (need for paired tag)
+			$this->add('input', ['type' => 'radio', 'name' => $name, 'id' => $key, 'value' => $val], (strcmp($val, $value) == 0) ? ['checked'] : ($readonly || ($required && Str::IsEmpty($key)) ? ['disabled'] : []));
+		}
+		return $this;
+	}
+
+	public function text(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object //e.g. maxlength="64"
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
 		$value = Str::Sanitize($value);
-		$this->add(HTML::Tag('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib)); //number has no pattern !
+		return $this->add('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib); //number has no pattern !
 	}
 
-	public function Number(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void
+	public function number(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
 		if(!Num::IsInteger($value)) $value = null;
 		else $value = Str::Sanitize($value);
-		$this->add(HTML::Tag('input', ['type' => 'number', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib)); //number has no pattern !
+		return $this->add('input', ['type' => 'number', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib); //number has no pattern !
+	}
+
+	public function color(string $name, ?string $value = null, bool $readonly = false, bool $required = false, array $attrib = []): object
+	{
+		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
+		$value = Str::Sanitize($value);
+		return $this->add('input', ['type' => 'color', 'name' => $name, 'id' => $name, 'value' => $value, 'required' => $required, 'readonly' => $readonly], $attrib);
+	}
+
+	public function date(string $name, ?string $value = null, bool $readonly = false, bool $required = false, array $attrib = []): object
+	{
+		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
+		$value = Str::Sanitize($value);
+		return $this->add('input', ['type' => 'date', 'name' => $name, 'id' => $name, 'value' => $value, 'required' => $required, 'readonly' => $readonly], $attrib);
 	}
 
 	//input extended
 
-	public function Integer(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void
+	public function integer(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object
 	{
 		$attrib = array_merge(['inputmode' => 'numeric', 'step' => 1], $attrib);
-		$this->Number($name, $value, $placeholder, $readonly, $required, $attrib);
+		return $this->Number($name, $value, $placeholder, $readonly, $required, $attrib);
 	}
 
-	public function FloatP(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void //float positive 12345.67 or 0.005 (not 0 or 0.0)
+	public function floatP(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object //float positive 12345.67 or 0.005 (not 0 or 0.0)
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
 		$value = Str::Sanitize($value);
 		$attrib_float = ['inputmode' => 'numeric', 'onkeyup' => "this.value=this.value.replace(',', '.');", 'pattern' => self::pattern_price]; //numeric keyboard and comma to point replace 
-		$this->add(HTML::Tag('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib_float, $attrib));
+		return $this->add('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib_float, $attrib);
 	}
 
-	public function FloatPZ(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void //float positive-zero 12345.67 (0 or 0.0 too)
+	public function floatPZ(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object //float positive-zero 12345.67 (0 or 0.0 too)
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
 		$value = Str::Sanitize($value);
 		$attrib_float = ['inputmode' => 'numeric', 'onkeyup' => "this.value=this.value.replace(',', '.');", 'pattern' => self::pattern_num]; //numeric keyboard and comma to point replace 
-		$this->add(HTML::Tag('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib_float, $attrib));
+		return $this->add('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib_float, $attrib);
 	}
 
-	public function Float(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void //float 12345.67 (zero/plus/minus too)
+	public function float(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object //float 12345.67 (zero/plus/minus too)
 	{
 		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
 		$value = Str::Sanitize($value);
 		$attrib_float = ['inputmode' => 'numeric', 'onkeyup' => "this.value=this.value.replace(',', '.');", 'pattern' => self::pattern_float]; //numeric keyboard and comma to point replace 
-		$this->add(HTML::Tag('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib_float, $attrib));
+		return $this->add('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib_float, $attrib);
 	}
 
-	public function Date(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void
-	{
-		if(is_null($value)) $value = Request::GetParam($name); //try get value from params
-		$value = Str::Sanitize($value);
-		$attrib_date = ['inputmode' => 'numeric', 'onkeyup' => "this.value=this.value.replace(',', '.');", 'maxlength' => 10, 'pattern' => self::pattern_date];
-		$this->add(HTML::Tag('input', ['type' => 'text', 'name' => $name, 'id' => $name, 'value' => $value, 'placeholder' => $placeholder, 'required' => $required, 'readonly' => $readonly], $attrib_date, $attrib));
-	}
-
-	public function Year(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void
+	public function year(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object
 	{
 		$attrib = array_merge(['min' => 1, 'max' => 9999], $attrib);
-		$this->Integer($name, $value, $placeholder, $readonly, $required, $attrib);
+		return $this->Integer($name, $value, $placeholder, $readonly, $required, $attrib);
 	}
 
-	public function Month(string $name, ?string $value = null, bool $readonly = false, bool $required = false, array $attrib = []): void //required: true = disallow whole year
+	public function month(string $name, ?string $value = null, bool $readonly = false, bool $required = false, array $attrib = []): object //required: true = disallow whole year
 	{
-		$this->ComboBox($name, Language::Months(!$required, with_numbers: true), $value, $readonly, $required, $attrib);
+		return $this->ComboBox($name, Language::Months(!$required, with_numbers: true), $value, $readonly, $required, $attrib);
 	}
 
-	public function Day(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): void //required: false = allow whole month
+	public function day(string $name, ?string $value = null, ?string $placeholder = null, bool $readonly = false, bool $required = false, array $attrib = []): object //required: false = allow whole month
 	{
 		$attrib = array_merge(['min' => 1, 'max' => 31], $attrib);
-		$this->Integer($name, $value, $placeholder, $readonly, $required, $attrib);
+		return $this->Integer($name, $value, $placeholder, $readonly, $required, $attrib);
 	}
 
 	//output
@@ -227,29 +251,27 @@ class Form
 	//int = fieldset[index] only
 	public function echo(null|bool|int $what = null): void
 	{
-		if(is_null($what) || $what === true) echo HTML::Tag('form', true, $this->form_attrib); //open
+		if(is_null($what) || $what === true) Page::Add('form', true, $this->form_attrib); //open form
 		if(is_null($what)) //all fieldsets
 		{
-			foreach($this->fieldsets as $fieldset)
+			foreach($this->fieldsets as $index => $fieldset) 
 			{
-				echo HTML::Tag('fieldset', true);
-				foreach($fieldset as $item) echo $item;
-				echo HTML::Tag('fieldset', false);
+				Page::Add($fieldset);
+				if($index > 0) Page::Add('fieldset', false); //close fieldset (zero is not fieldset)
 			}
 		}
 		elseif(is_int($what)) //only selected fieldset
 		{
 			if(isset($this->fieldsets[$what]))
 			{
-				echo HTML::Tag('fieldset', true);
-				foreach($this->fieldsets[$what] as $item) echo $item;
-				echo HTML::Tag('fieldset', false);
+				Page::Add($this->fieldsets[$what]);
+				if($what > 0) Page::Add('fieldset', false); //close fieldset (zero is not fieldset)
 			}
 		}
 		if(is_null($what) || $what === false) //close
 		{
-			echo HTML::Tag('input', ['type'=>'hidden', 'name'=>'token', 'id'=>'token', 'value' => Request::GetToken()]);
-			echo HTML::Tag('form', false);
+			Page::Add('input', ['type'=>'hidden', 'name'=>'token', 'id'=>'token', 'value' => Request::GetToken()]); //token
+			Page::Add('form', false); //close form
 		}
 	}
 }
