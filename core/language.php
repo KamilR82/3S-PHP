@@ -17,11 +17,8 @@ define('TRANSLATE_POSTFIX', '');
 
 class Language extends Singleton
 {
-	/** @var array<int|string, string> $lang_default */
-	private static array|false $lang_default = false;
-
-	/** @var array<int|string, string> $language */
-	private static array|false $lang_active = false;
+	private static false|array $lang_default = false;
+	private static false|array $lang_active = false;
 	
 	const days = array('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'); //default weekdays
 	const months = array('(whole year)', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'); //default months
@@ -97,7 +94,7 @@ class Language extends Singleton
 		return false;
 	}
 
-	public static function Get(string|int $id, int $plural = 0): string //get localized string
+	public static function Get(string|int $id, int $plural = 0, ?string $default = null): string //get localized string
 	{
 		//active
 		if(self::$lang_active !== false)
@@ -146,7 +143,7 @@ class Language extends Singleton
 			}
 		}
 		//not found
-		return App::Env('APP_DEBUG') ? "&iquest;{$id}?" : '???';
+		return $default ?: (App::Env('APP_DEBUG') ? "?{$id}?" : '???');
 	}
 
 	public static function Translate(string $text, string $prefix = TRANSLATE_PREFIX, string $postfix = TRANSLATE_POSTFIX): string //translate string
@@ -195,6 +192,6 @@ Language::Initialize();
 
 class_alias('Language', 'Lang');
 
-//function _() - alias of built-in php function gettext()
+//function _() - alias of php function gettext()
 function _L(string $text, int $plural = 0): string { return Language::Get($text, $plural); } //use function Lang::Get as _L; //alias
 function _T(string $text, string $prefix = TRANSLATE_PREFIX, string $postfix = TRANSLATE_POSTFIX): string { return Language::Translate($text, $prefix, $postfix); } //use function Lang::Translate as _T; //alias

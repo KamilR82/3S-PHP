@@ -147,31 +147,32 @@ class Num extends Singleton
 		return floatval($num); //floatval allow only decimal dot
 	}
 
-	public static function ToPercent(float $num, float $denominator, bool $colored = false, int $decimals = 2): string
+	public static function ToPercent(float $num, float $denominator, bool $plus_sign = false, int $decimals = 2): string
 	{
 		if($denominator > 0)
 		{
 			$percent = 100 * $num / $denominator;
-			if($colored && $percent != 0.0)
-			{
-				return HTML::Span(sprintf('%+.'.$decimals.'f&nbsp;%%', $percent), class: $percent < 0 ? 'red-text' : 'green-text');
-			}
-			else return number_format($percent, $decimals, ',', '&nbsp;').'&nbsp;%'; //without color and without plus sign
+			if($plus_sign && $percent != 0.0) return sprintf('%+.'.$decimals.'f&nbsp;%%', $percent); //with plus sign
+			else return number_format($percent, $decimals, ',', '&nbsp;').'&nbsp;%'; //without plus sign
 		}
 		else return '&mdash;';
 	}
 
-	public static function ToCurrency(string|int|float|null $num, string $append = '&euro;', bool $dash = false, bool $colored = false): string
+	public static function ToCurrency(string|int|float|null $amount, ?string $currency = null, bool $dash = false): string
 	{
-		if(Any::IsEmpty($num)) $num = '&mdash;';
-		elseif(is_numeric($num))
+		if(Any::IsEmpty($amount)) $amount = '&mdash;';
+		elseif(is_numeric($amount))
 		{
-			$num = floatval($num);
-			if($dash && $num == 0) $num = '&mdash;';
-			elseif($colored && $num < 0) $num = HTML::Span(number_format($num, 2, ',', '&nbsp;').'&nbsp;'.$append, class: 'red-text');
-			else $num = number_format($num, 2, ',', '&nbsp;').'&nbsp;'.$append;
+			$amount = floatval($num);
+			if($dash && $amount == 0) $amount = '&mdash;';
+			else
+			{
+				$fmt = new \NumberFormatter(App::Env('APP_LOCALE'), \NumberFormatter::CURRENCY);
+				if(is_null($currency)) $currency = $fmt->getSymbol(\NumberFormatter::INTL_CURRENCY_SYMBOL); //3-letter ISO 4217
+				$amount = $fmt->formatCurrency($amount, $currency);
+			}
 		}
-		return $num;
+		return $amount;
 	}
 }
 

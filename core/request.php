@@ -186,15 +186,15 @@ class Request extends Singleton //Uniform Resource Locator
 		exit;
 	}
 
-	public static function Modify(array $new = [], ?string $url = null): string //empty array only delete empty elements
+	public static function Modify(array $params_new = [], ?string $url = null): string //empty array only delete empty elements
 	{
 		if($url === null) $url = self::$request;
 
-		$query = parse_url($url, PHP_URL_QUERY); //get ?xxx=yyy&zzz... (without '?')
+		$query = parse_url($url, PHP_URL_QUERY); //get ?xxx=yyy&zzz... (without question mark)
 		$params = array(); //empty array
 		if(Any::NotEmpty($query)) parse_str($query, $params); //parse query string into variables array
-		if(count($new)) $params = array_merge($params, $new); // combine and overwrite same string keys (numeric keys will not overwrite !!!)
-		$params = array_filter($params, fn($value) => !is_null($value) && $value !== ''); //delete empty elements
+		$params = array_merge($params, $params_new); // combine and overwrite same string keys (numeric keys will not overwrite !!!)
+		$params = array_filter($params, 'Any::NotEmpty'); //fn($value) => !is_null($value) && $value !== ''); //delete empty elements
 
 		$query_new = http_build_query($params); //http_build_query($params, '', '&amp;')
 		if(strlen($query_new)) $query_new = '?'.$query_new ; //add '?'

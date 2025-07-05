@@ -297,10 +297,11 @@ class App extends Singleton
 			'Logger', 'Log' => 'logger',
 			'DataBase', 'DB' => 'database',
 			'Userlogin', 'User' => 'userlogin', 
+			'Method' => 'class_form', //enum
 			default => 'class_'.$class,
 		}) . self::extension;
 		if(file_exists($filename)) require_once($filename);
-		else self::Die(ResponseCode::Not_Found, 'Not Found! Class or trait `'.$class.'` is missing!');
+		else self::Die(ResponseCode::Not_Found, 'Not Found! Class `'.$class.'` is missing!'); //Class or trait or enum
 	}
 
 	public function __destruct()

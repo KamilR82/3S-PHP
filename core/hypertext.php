@@ -6,65 +6,252 @@ require_once('singleton.php');
 
 App::Protect(__FILE__);
 
-class Tree
+class Element implements \Countable //of HTML DOM (data object model)
 {
-	private array $data = [];
+	private object $active; //active element for add child
+	private ?object $parent = null; //parent element or none
 
-	public function add(object|string $name, mixed ...$data): void
+	private string $tag = ''; //name ('' = only text in content)
+	private bool $singular = false; //false = paired
+	private ?bool $flag = null; //false = only abstract close element / true = keep open for add child elements (return this, no parent)
+
+	protected array $attrib = []; //attributes
+	private array $container = []; //inside data (text or child elements)
+
+//Countable interface
+
+	public function count() : int //child elements count
 	{
-		if(is_object($name)) array_push($this->data, $name);
-		else array_push($this->data, [$name, ...$data]);
+		return count($this->container);
 	}
 
-	public function echo()
+//Construct
+
+	public function __construct(string $tag, mixed ...$data)
 	{
-		foreach($this->data as $item)
+		$this->active = $this;
+		$this->tag = $tag;
+		$this->singular = array_search($this->tag, ['img', 'br', 'hr', 'input', 'link', 'col', 'area', 'meta', 'base', //list of all singular tags
+		/*svg*/ 'path', 'rect', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'image', 'stop', 'set', 'animate', 'animateMotion', 'animateTransform'], true) !== false;
+
+		foreach($data as $key => $val) //parse data
 		{
-			if(is_object($item)) $item->echo();
-			else Page::echo(...$item);
+			if(is_string($key)) $this->attrib[$key] = $val; //attributes (by named variables)
+			elseif(is_array($val)) $this->attrib = array_merge($this->attrib, $val); //attributes (by array)
+			elseif(is_string($val) || $val instanceof Element) array_push($this->container, $val); //text or child element
+			elseif(is_bool($val)) $this->flag = $val;
 		}
 	}
 
+	public function add(string|object ...$objects): object //add text(s) or element object(s) to active element node
+	{
+		foreach($objects as $obj)
+		{
+			if(empty($obj)) continue; //skip empty('') strings
+			if(is_string($obj)) array_push($this->active->container, $obj); //add text
+			elseif($obj instanceof Element)
+			{
+				if($obj->flag === false && empty($obj->container) && empty($obj->attrib))
+				{
+					//echo('<!-- / '.$this->active->tag.' <- '.$obj->tag.' -->'.PHP_EOL); //DEBUG - Close Tag
+					$parent = $this->active->parent($obj->tag); //try to close
+					if($parent) $this->active = $parent; //parent tag found
+					else array_push($this->active->container, new Element('!', 'Error: Tag not found! (`'.$obj->tag.'` not open)')); //html comment
+				}
+				else //if($obj->flag === true || !empty($obj->container) || !empty($obj->attrib)) //same
+				{
+					//echo('<!-- + '.$this->active->tag.' -> '.$obj->tag.' -->'.PHP_EOL); //DEBUG - Open Tag
+					$obj->parent = $this->active; //set parent to child
+					array_push($this->active->container, $obj); //add child
+					if($obj->flag === false) continue; //don't keep open when is forced close
+					if($obj->singular) continue; //don't keep open when is singular
+					if($obj->flag !== true && !empty($obj->container)) continue; //don't keep open when contain data and is not explicitly open
+					if($obj->flag === true || !empty($obj->attrib)) $this->active = $obj; //keep open when is explicitly open or attributes is set
+				}
+			}
+			else throw new \Exception('Element::add - Unsupported object type. Expected object `Element` or its child.');
+		}
+		return $this->active; //parent of added child
+	}
+
+	public function parent(string $tag = ''): ?object //get parent element (by name)
+	{
+		//if(is_null($this->parent)) return $this; //has no parent = return self
+		if(!is_null($this->parent) && strlen($tag)) //want exact tag
+		{
+			if(strcasecmp($tag, $this->tag) != 0) return $this->parent->parent($tag); //recursion
+		}
+		return $this->parent;
+	}
+
+	public function activate(): object //reset this active element to self (this)
+	{
+		return $this->active = $this; //set self to active
+	}
+
+	public function close(): object //close self - set parent active element to self (parent)
+	{
+		if($this->parent) return $this->parent->activate();
+		else return $this; //no parent = no close = return self
+	}
+
+	public function first(?string $tag = null, ?string $id = null): ?object //get child (by name and id)
+	{
+		foreach($this->container as $obj)
+		{
+			if($obj instanceof Element)
+			{
+				if(is_null($tag)) return $obj; //first object
+				elseif(strcasecmp($tag, $obj->tag) == 0)
+				{
+					if(is_null($id)) return $obj; //first object with tag
+					elseif(isset($obj->attrib['id']) && strcasecmp($id, $obj->attrib['id']) == 0) return $obj; //first object with tag and id
+				}
+			}
+		}
+		return null;
+	}
+
+	public function remove(string $tag, ?string $id = null): void
+	{
+		foreach($this->container as $key => $obj)
+		{
+			if($obj instanceof Element)
+			{
+				if(strcasecmp($tag, $obj->tag) == 0)
+				{
+					if(is_null($id)) unset($this->container[$key]);
+					elseif(isset($obj->attrib['id']) && strcasecmp($id, $obj->attrib['id']) == 0) unset($this->container[$key]);
+				}
+			}
+		}
+	}
+
+	public function clear(): void
+	{
+		$this->container = []; //destroy all children objects
+	}
+
+	public function attrib(?array $attrib = null): void //attributes set or clear
+	{
+		if(is_null($attrib)) $this->attrib = [];
+		else $this->attrib = array_merge($this->attrib, $attrib);
+	}
+
+//output
+
+	private function attributes(?array $attrib = null): string //attributes array to string
+	{
+		if(is_null($attrib)) $attrib = $this->attrib;
+		$output = '';
+		foreach($attrib as $key => $val)
+		{
+			if(is_null($val) || $val === false) continue; //value can be empty, but null or false is skipped
+			if(is_array($val)) $output .= $this->attributes($val); //array recursion
+			elseif(is_int($key)) $output .= ' '.htmlspecialchars(strval($val), ENT_NOQUOTES); //value only
+			else //$key is string
+			{
+				$key = htmlspecialchars($key, ENT_NOQUOTES); // convert <>& (does not convert any quotes)
+				if($val === true) $output .= ' '.$key; //key only
+				else $output .= ' '.$key.'="'.htmlspecialchars(strval($val), ENT_COMPAT).'"'; //key="val" (convert only double quotes)
+			}
+		}
+		return $output;
+	}
+
+	public function __toString(): string //magic method -> convert object to HTML string
+	{
+		$output = '';
+		if($this->tag === '!') //html comment
+		{
+			$output .= '<!-- '.implode(' ', $this->container).' -->';
+		}
+		else //html tags
+		{
+			$output .= '<' . $this->tag . $this->attributes($this->attrib); //open tag + attributes
+			if($this->singular) $output .= ' />'; //Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
+			else //paired tag (others)
+			{
+				$output .= '>';
+				//container
+				foreach($this->container as $value)
+				{
+					if($value instanceof Element) $output .= strval($value);
+					elseif(is_string($value)) $output .= str_replace(['<','>'], ['&lt;','&gt;'], $value); //htmlspecialchars($value, ENT_NOQUOTES); //no &
+				}
+				//closing paired tag
+				$output .= '</'.$this->tag.'>'; //attributes are ignored
+			}
+		}
+		return $output;
+	}
+
+	public function echo(): void
+	{
+		if($this->tag === '!') //html comment
+		{
+			$output = '<!-- '.implode(' ', $this->container).' -->';
+			Page::echo($output, null);
+		}
+		else //html tags
+		{
+			$output = '<' . $this->tag . $this->attributes($this->attrib); //open tag + attributes
+			if($this->singular)
+			{
+				$output .= ' />'; //Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
+				Page::echo($output, null, $this->tag); //singular
+			}
+			else //paired tag (others)
+			{
+				$output .= '>';
+				Page::echo($output, true, $this->tag); //open paired tag
+				//container
+				foreach($this->container as $value)
+				{
+					if($value instanceof Element) $value->echo();
+					elseif(is_string($value)) Page::echo(str_replace(['<','>'], ['&lt;','&gt;'], $value)); //htmlspecialchars($value, ENT_NOQUOTES); //no &
+				}
+				//closing paired tag
+				$output = '</'.$this->tag.'>'; //attributes are ignored
+				Page::echo($output, false, $this->tag);
+			}
+		}
+	}
+
+    public function __debugInfo(): array
+	{
+        return array_merge([$this->tag], $this->container); //return array_merge([$this->tag], $this->attrib, $this->container);
+    }
+
 	public function __destruct()
 	{
-		unset($this->data);
-	}
-}
-
-class Queue
-{
-	private array $data = [];
-
-	public function add(object|string $name, mixed ...$data): void
-	{
-		if(is_object($name)) $name->explode($this); //explode object into data and add rows separately (object in $data is unwanted)
-		else array_push($this->data, [$name, ...$data]);
+		unset($this->container); //destroy inside data
+		unset($this->attrib); //destroy attributes
 	}
 
-	public function first(string $name, mixed ...$data): void //set first
+//html tag aliases
+
+	public function __call($name, $data): ?object //html tag function missing
 	{
-		if(($key = array_key_first($this->data)) !== false) $this->data[$key] = [$name, ...$data]; //replace first
-		else array_push($this->data, [$name, ...$data]); //$data is empty - add first
+		if(strcasecmp($name, 't') == 0) return $this->active->add(implode('', ...$data)); //without tag name is only text
+		else return $this->active->add(new Element($name, ...$data)); //create it :)
 	}
 
-	public function explode(object $obj): void //explode object to data
+	function href(bool|string $content = true, ?string $href = null, mixed ...$data): object //a hyperlink
 	{
-		foreach($this->data as $row) $obj->add(...$row);
+		return $this->active->add(new Element('a', $content, ['href' => Request::GetFileName($href)], $data));
 	}
 
-	public function count()
+	function click(bool|string $content = true, ?string $onclick = null, mixed ...$data): object //a onclick
 	{
-		return count($this->data);
+		return $this->active->add(new Element('a', $content, ['href' => 'javascript:;', 'onclick' => $onclick], $data)); //run only onclick javascript
 	}
 
-	public function echo()
+	function img(string|array $src, string|array $alt = [], mixed ...$data): object //singular - image
 	{
-		foreach($this->data as $row) Page::echo(...$row);
-	}
-
-	public function __destruct()
-	{
-		unset($this->data);
+		if(is_string($src)) $src = array('src' => $src);
+		if(is_string($alt)) $alt = array('alt' => $alt);
+		return $this->active->add(new Element(__FUNCTION__, $src, $alt, $data));
 	}
 }
 
@@ -72,46 +259,41 @@ if(!trait_exists('PageTemplate', false)) { trait PageTemplate {} } //abstract tr
 
 class Page extends Singleton
 {
-	/** @var array<int, string> $open_tags */
-	private static array $open_tags = [];
+	use PageTemplate; //implements user defined page customization
 
-	private static bool $mode = true; //true = send tag to output queue / false = only translate tag to string and return it (no output)
-	private static object $output; //output tags queue
+	private static array $open_tags = []; //control strings
+
+	private static object $html; //master element
 
 	private static float $starttime = 0; //loading page start time
 	private static string $title = ''; //page title
 	private static array $links = []; //page links
 
-	use PageTemplate; //implements user defined page customization
-
-	protected function __construct(?string $title = null)
+	protected function __construct()
 	{
 		self::$starttime = microtime(true);
-		self::$output = new Queue();
+		self::$html = new Element('html', true, lang: App::Env('APP_LANGUAGE')); //language declaration meant to assist search engines and browsers
 	}
 
 	public static function Start(?string $title = null): void
 	{
 		header('Content-Type: text/html; charset='.strtolower(App::Env('APP_ENCODING')));
-		if(is_callable([__CLASS__, 'Headers'])) self::Headers(); //replace or add custom headers
+		if(method_exists(__CLASS__, 'Finish')) self::Headers(); //replace or add custom headers
 
 		if(Str::NotEmpty($title)) self::Title($title);
 
-		//html
-		self::Add('html', ['lang' => App::Env('APP_LANGUAGE')]); //language declaration meant to assist search engines and browsers
-
 		//head
-		self::Add('head', true);
-		self::Add('title', Page::Title()); //required only once in every HTML document (must be text-only)
-		self::Add('meta', ['charset' => strtolower(App::Env('APP_ENCODING'))]);
-		self::Add('meta', ['name' => 'title', 'content' => Page::Title()]);
-		if(is_callable([__CLASS__, 'Metadata'])) self::Metadata(true); //may contain links
-		foreach(Page::Links() as $link) self::Add('link', $link); //add links
-		self::Add('head', false);
+		head(true);
+		title(Page::Title()); //required only once in every HTML document (must be text-only)
+		meta(charset: strtolower(App::Env('APP_ENCODING')));
+		meta(name: 'title', content: Page::Title());
+		if(method_exists(__CLASS__, 'Metadata')) self::Metadata(true); //may contain links
+		foreach(self::$links as $link) lnk($link); //add links
+		head(false);
 
 		//body
-		self::Add('body', true);
-		if(is_callable([__CLASS__, 'Begin'])) self::Begin();
+		body(true);
+		if(method_exists(__CLASS__, 'Begin')) self::Begin();
 	}
 
 	public static function Title(?string $title = null, bool $only = false): string //$only = don't append app name
@@ -128,17 +310,12 @@ class Page extends Singleton
 		return self::$title;
 	}
 
-	public static function Links(): array
-	{
-		return self::$links;
-	}
-
-	public static function Icon(string $href, string $type = 'image/x-icon'): void
+	public static function Icon(string $href = 'favicon.ico', string $type = 'image/x-icon'): void
 	{
 		array_push(self::$links, ['rel' => 'icon', 'type' => $type, 'href' => $href]);
 	}
 
-	public static function Style(string $href, string $type = 'text/css'): void
+	public static function Style(string $href = 'style.css', string $type = 'text/css'): void
 	{
 		array_push(self::$links, ['rel' => 'stylesheet', 'type' => $type, 'href' => $href]);
 	}
@@ -148,260 +325,194 @@ class Page extends Singleton
 		return microtime(true) - self::$starttime;
 	}
 
-	public static function Menu(array $menu, string $selected = 'selected'): void //shortcut for make menu
-	{
-		new Menu($menu, $selected); //create, load, echo and free memory at function end
-	}
-
-	public static function Output(bool $mode = true): void
-	{
-		self::$mode = $mode;
-	}
-
-	//for all functions bellow $data:
+	//$type:
 	//null - singular tag - void element - <$name />
 	//true - paired tag - only open element - <$name>
 	//false - paired tag - only close element - </$name> - attributes are ignored
-	//'string' - complete paired tag - <$name>$content</$name>
-
-	public static function Data(string $name, mixed ...$data): ?string
+	public static function echo(string $data, ?bool $type = null, string $tag = ''): void
 	{
-		if(self::$mode) Page::Add($name, ...$data); //output mode - send tag to output queue
-		else return Page::Tag($name, ...$data); //prepare mode - only translate tag to string and return it (no output)
-		return null;
-	}
-
-	public static function Add(object|string $name, mixed ...$data): void
-	{
-		self::$output->add($name, ...$data);
-	}
-
-	private static function Parse(string $name, array & $data): null|bool|string //data -> content & attributes
-	{
-		$content = null; //tag data or type
-		$attrib = []; //tag attributes
-		//parse data
-		foreach($data as $key => $val)
+		if(App::Env('APP_DEBUG'))
 		{
-			if(is_array($val))
+			static $prev_tag = '';
+
+			if($type === true)
 			{
-				$attrib = array_merge($attrib, $val); //add to attributes
-				unset($data[$key]); //remove attrib from content
+				if(strlen($prev_tag)) echo PHP_EOL . str_repeat("\t", count(self::$open_tags)); //pretty print for debug HTML code
+				array_push(self::$open_tags, $tag);
 			}
-			elseif(is_bool($val) || is_null($val))
-			{
-				$content = $val; //set tag type (open/close/singular)
-				unset($data[$key]); //remove
-			}
-		}
-		if(count($data) > 0) $content = implode('', $data); //get content (if exists)
-		$data = $attrib;
-		//additional input control for paired tags (if user not set true for empty paired tag to open)
-		if(is_null($content) && array_search($name, ['img', 'br', 'hr', 'input', 'link', 'col', 'meta', 'base']) === false) $content = true; //list of singular tags
-		return $content;
-	}
-
-	public static function Tag(string $name, mixed ...$data): string //data -> HTML string
-	{
-		$content = self::Parse($name, $data);
-		//make output
-		$output = '';
-		if($content === false) $output .= '</'.$name.'>'; //closing paired tag (attributes are ignored)
-		else
-		{
-			if(Str::NotEmpty($name))
-			{
-				$output .= '<'.$name;
-				foreach($data as $key => $val) //attributes
-				{
-					if(is_null($val) || $val === false) continue; //value can be empty, but null or false is discarded
-					if(is_int($key)) $output .= ' '.$val; //val only
-					else //$key is string
-					{
-						if($val === true) $output .= ' '.$key; //key only
-						else $output .= ' '.$key.'="'.$val.'"'; //key="val"
-					}
-				}
-
-				if(is_null($content)) $output .= ' /'; //Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
-				$output .= '>';
-
-				if(is_string($content)) $output .= $content . '</'.$name.'>'; //complete paired tag
-			}
-			else $output = $content; //only text without tag
-		}
-		return $output;
-	}
-
-	public static function echo(string $name, mixed ...$data): void //data -> echo with check HTML DOM (Document Object Model)
-	{
-		static $prev_tag = '';
-
-		$content = self::Parse($name, $data);
-		//make output
-		$output = '';
-		if($content === false) //closing paired tag(s)
-		{
-			if(Str::IsEmpty($name) || in_array($name, self::$open_tags)) //tag open?
+			elseif($type === false) //closing paired tag
 			{
 				while($last_tag = array_pop(self::$open_tags))
 				{
-					if(App::Env('APP_DEBUG')) $output .= PHP_EOL . str_repeat("\t", count(self::$open_tags)); //pretty print for debug HTML code
+					if(strlen($prev_tag)) echo PHP_EOL . str_repeat("\t", count(self::$open_tags)); //pretty print for debug HTML code
 
-					$output .= '</'.$last_tag.'>'; //attributes are ignored
-					if($last_tag === $name) break; //required tag reached
+					echo '</'.$last_tag.'>';
+					$prev_tag = $tag;
+					if($last_tag === $tag) return; //required tag reached
 				}
+				echo '<!-- Debug: Tag `'.$tag.'` not found! (not open) -->'; //tag not open
 			}
-			else if(App::Env('APP_DEBUG')) $output .= '<!-- Debug: Tag `'.$name.'` not found! -->'; //tag not open
+			else if(strlen($prev_tag) && strlen($tag)) echo PHP_EOL . str_repeat("\t", count(self::$open_tags)); //pretty print for debug HTML code
+
+			$prev_tag = $tag;
 		}
+		else //without pretty print - only DOM control
+		{
+			if($type === true) array_push(self::$open_tags, $tag);
+			elseif($type === false) //closing paired tag
+			{
+				while($last_tag = array_pop(self::$open_tags))
+				{
+					echo '</'.$last_tag.'>';
+					if($last_tag === $tag) return; //required tag reached
+				}
+				echo '<!-- Debug: Tag `'.$tag.'` not found! (not open) -->'; //tag not open
+			}
+		}
+		echo $data; //output
+	}
+
+	public static function tag(string $tag, mixed ...$data): object 
+	{
+		if(empty($tag)) return self::$html->add(implode('', $data)); //add text (directly)
 		else
 		{
-			if(Str::NotEmpty($name))
-			{
-				if(App::Env('APP_DEBUG') && strlen($prev_tag)) $output .= PHP_EOL . str_repeat("\t", count(self::$open_tags)); //pretty print for debug HTML code
-
-				$output .= '<'.$name;
-				foreach($data as $key => $val) //attributes
-				{
-					if(is_null($val) || $val === false) continue; //value can be empty, but null or false is discarded
-					if(is_int($key)) $output .= ' '.$val; //val only
-					else //$key is string
-					{
-						if($val === true) $output .= ' '.$key; //key only
-						else $output .= ' '.$key.'="'.$val.'"'; //key="val"
-					}
-				}
-
-				if(is_null($content)) $output .= ' /'; //Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
-				$output .= '>';
-
-				if(is_string($content)) $output .= $content . '</'.$name.'>'; //complete paired tag
-				else if($content === true) array_push(self::$open_tags, $name); //save open tag
-			}
-			else $output = $content; //only text without tag
+			$obj = new Element($tag, ...$data); //make object
+			self::$html->add($obj); //add object
+			return $obj; //return new object
 		}
-		$prev_tag = $name;
-		echo $output;
+	}
+
+	public static function __callStatic($name, $data): object //Page::{method} (is_callable([__CLASS__, 'method_name']) also triggers this function)
+	{
+		$obj = new $name(...$data); //try to load class and create object
+		self::$html->add($obj); //add object
+		return $obj; //return new object
 	}
 
 	public function __destruct()
 	{
-		if(self::$output->count())
-		{
-			//declaration
-			echo '<!DOCTYPE html>'.PHP_EOL; //HTML 5
-			echo '<!-- Created with '.App::Env('3S_NAME').' -->'.PHP_EOL;
-			if(App::Env('APP_DEBUG')) echo '<!-- Debug mode is enabled! -->'.PHP_EOL;
-			//finish html
-			if(is_callable([__CLASS__, 'Finish'])) self::Finish();
-			self::Add('', false); //close all open tags (...,body,html)
-			//END
-			self::$output->echo(); //and now echo all html tags
-		}
+		//finish html
+		if(method_exists(__CLASS__, 'Finish')) self::Finish();
+
+		//output
+		echo '<!DOCTYPE html>'.PHP_EOL; //HTML 5 declaration
+		echo '<!-- Created with '.App::Env('3S_NAME').' -->'.PHP_EOL; //about
+		if(App::Env('APP_DEBUG')) echo '<!-- Debug mode is enabled! (Disabled debug mode shortens the execution time.) -->'.PHP_EOL;
+		echo sprintf('<!-- Page loaded in %.04f seconds. -->', self::Time()).PHP_EOL;
+		//all html tags
+		self::$html->echo(); //DEBUG: print_r(self::$html);
+		//last info
+		echo PHP_EOL.sprintf('<!-- Page done in %.04f seconds. -->', self::Time());
 	}
 }
 
 Page::Initialize();
 
- //replace of command `echo`
-function t(string $data): ?string { return Page::Data('', $data); } //without tag name is only text
-function txt(string $data): ?string { return Page::Data('', $data); } //without tag name is only text
-function text(string $data): ?string { return Page::Data('', $data); } //without tag name is only text
+ //replace of `echo` command
+function t(string $data): object { return Page::tag('', $data); } //text - not HTML tag (empty tag name is only text)
 
 //html tag aliases
-function title(string $data): ?string { return Page::Data(__FUNCTION__, $data); }
-function script(string $data): ?string { return Page::Data(__FUNCTION__, $data); }
-function noscript(string $data = 'Your browser does not support JavaScript!'): ?string { return Page::Data(__FUNCTION__, $data); }
+function title(string $data): object { return Page::tag(__FUNCTION__, $data); }
+function script(string $data): object { return Page::tag(__FUNCTION__, $data); }
+function noscript(string $data = 'Your browser does not support JavaScript!'): object { return Page::tag(__FUNCTION__, $data); }
 
-//Singular Tags (only for head)
-function base(array $attrib = []): ?string { return Page::Data(__FUNCTION__, $attrib); } //specifies the base URL and/or target for all relative URLs
-function lnk(array $attrib = []): ?string { return Page::Data('link', $attrib); } //defines the relationship between the current document and an external resource (style sheets or to add a favicon) (keyword link is used by php)
-function meta(array $attrib = []): ?string { return Page::Data(__FUNCTION__, $attrib); } //metadata (information data) about an HTML document
+//head tags
+function base(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - specifies the base URL and/or target for all relative URLs
+function lnk(mixed ...$data): object { return Page::tag('link', ...$data); } //singular - defines the relationship between the current document and an external resource (style sheets or to add a favicon) (keyword link is used by php)
+function meta(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - metadata (information data) about an HTML document
 
-function html(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //root of an HTML document
-function head(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //container for metadata
-function style(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function body(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //contains all the contents of an HTML document
-function headr(mixed ...$data): ?string { return Page::Data('header', ...$data); } //represents a container for introductory content (keyword header is used by php)
-function nav(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //defines a major navigation links or menu
-function main(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //main content of the document
-function footer(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //defines a footer for a document or section
-
-function section(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //block document section
-function article(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //block self-contained article
-function div(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //block division container
-function p(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //block paragraph of content
-function pre(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //block preformatted text
-function blockquote(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //block long quotation
-function figure(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //block self-contained content, like illustrations, diagrams, photos, etc.
-function figcaption(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //<figcaption> element is FIRST or LAST child of the <figure> element
-function span(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline part of content
-function code(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline text as computer code
-function h1(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //heading 1
-function h2(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //heading 2
-function h3(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //heading 3
-function h4(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //heading 4 
-function h5(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //heading 5
-function h6(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //heading 6
-function em(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline emphasized (italic)
-function strong(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline strong (bold)
-function small(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline smaller text
-function mark(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline highlighted
-function sub(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline subscript
-function sup(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline superscript
-function s(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline strikethrough (incorrect)
-function q(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //inline short quotation
-function i(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function b(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function a(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //anchor
-function href(bool|string $content = true, ?string $href = null, ?string $title = null, ?string $target = null, array $attrib = []): ?string //a hyperlink
+function html(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //root of an HTML document
+function head(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //container for metadata
+function style(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function body(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //contains all the contents of an HTML document
+function headr(mixed ...$data): object { return Page::tag('header', ...$data); } //represents a container for introductory content (keyword header is used by php)
+function nav(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //defines a major navigation links or menu
+function main(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //main content of the document
+function footer(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //defines a footer for a document or section
+function dialog(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //defines a dialog box or subwindow (popup dialogs and modals)
+function section(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block document section
+function article(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block self-contained article
+function div(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block division container
+function p(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block paragraph of content
+function pre(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block preformatted text
+function blockquote(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block long quotation
+function figure(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block self-contained content, like illustrations, diagrams, photos, etc.
+function figcaption(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //<figcaption> element is FIRST or LAST child of the <figure> element
+function span(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline part of content
+function code(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline text as computer code
+function h1(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 1
+function h2(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 2
+function h3(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 3
+function h4(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 4 
+function h5(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 5
+function h6(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 6
+function strong(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline important text (bold)
+function small(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline smaller text
+function mark(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline marked/highlighted text
+function cite(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline title of a work (italic)
+function dfn(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline definition term
+function del(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline deleted part
+function ins(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline inserted part
+function sub(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline subscript
+function sup(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline superscript
+function em(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline emphasized (italic)
+function s(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline strikethrough (incorrect text)
+function q(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline short quotation
+function i(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline alternate text, technical term, a phrase from another language (italic)
+function b(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline bold text without any extra importance (bold)
+function a(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //anchor
+function href(bool|string $content = '', ?string $href = null, mixed ...$data): object //a hyperlink
 {
-	$href = Request::GetFileName($href);
-	return Page::Data('a', $content, ['href' => $href, 'title' => $title, 'target' => $target], $attrib);
+	return Page::tag('a', $content, ['href' => Request::GetFileName($href)], $data);
 }
-function click(bool|string $content = true, ?string $onclick = null, ?string $title = null, array $attrib = []): ?string //a onclick
+function click(bool|string $content = '', ?string $onclick = null, mixed ...$data): object //a onclick
 {
-	return Page::Data('a', $content, ['href' => 'javascript:;', 'title' => $title, 'onclick' => $onclick], $attrib); //run only onclick javascript
+	return Page::tag('a', $content, ['href' => 'javascript:;', 'onclick' => $onclick], $data); //run only onclick javascript
 }
 
-function menu(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //unordered list (same as ul)
-function ul(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //unordered list (same as menu)
-function ol(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //ordered list
-function li(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //list item
-function dl(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //description list
-function dt(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //term
-function dd(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); } //description
+function template(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //container to hold hidden content when the page loads. can be rendered later with a JavaScript
+function canvas(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //container for a script graphics
+function svg(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //container for Scalable Vector Graphics
 
-function table(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function caption(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function colgroup(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function col(array $attrib = []): ?string { return Page::Data(__FUNCTION__, $attrib); } //singular tag
-function thead(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function tbody(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function tfoot(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function tr(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function th(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function td(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
+function menu(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //unordered list (same as ul)
+function ul(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //unordered list (same as menu)
+function ol(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //ordered list
+function li(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //list item
+function dl(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //description list
+function dt(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //term
+function dd(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //description
 
-function form(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function fieldset(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function legend(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function label(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function button(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function select(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function option(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function optgroup(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function textarea(mixed ...$data): ?string { return Page::Data(__FUNCTION__, ...$data); }
-function input(array $attrib = []): ?string { return Page::Data(__FUNCTION__, $attrib); } //singular tag
-function radio(array $attrib = []): ?string { return Page::Data(__FUNCTION__, $attrib); } //singular tag
+function table(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function caption(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function colgroup(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function col(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular
+function thead(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function tbody(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function tfoot(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function tr(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function th(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function td(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 
-function br(array $attrib = []): ?string { return Page::Data(__FUNCTION__, $attrib); } //single line break
-function hr(array $attrib = []): ?string { return Page::Data(__FUNCTION__, $attrib); } //horizontal rule - defines a thematic break
-function img(string|array $src, null|string|array $alt = null, null|string|int $w = null, null|string|int $h = null, array $attrib = []): ?string //image
+function form(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function fieldset(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function legend(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function label(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function button(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function select(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function option(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function optgroup(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function textarea(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function input(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular
+function radio(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular
+
+function br(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - single line break
+function hr(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - horizontal rule - defines a thematic break
+function img(string|array $src = [], string|array $alt = [], mixed ...$data): object //singular - image
 {
 	if(is_string($src)) $src = array('src' => $src);
 	if(is_string($alt)) $alt = array('alt' => $alt);
-	if(Any::NotEmpty($w)) $attrib['width'] = $h;
-	if(Any::NotEmpty($h)) $attrib['height'] = $h;
-	return Page::Data(__FUNCTION__, $src, $alt, $attrib);
+	return Page::tag(__FUNCTION__, $src, $alt, $data);
 }
+function map(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //img usemap="#name"
+function area(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - defines an area inside an image map
