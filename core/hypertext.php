@@ -56,7 +56,7 @@ class Element implements \Countable //of HTML DOM (data object model)
 					//echo('<!-- / '.$this->active->tag.' <- '.$obj->tag.' -->'.PHP_EOL); //DEBUG - Close Tag
 					$parent = $this->active->parent($obj->tag); //try to close
 					if($parent) $this->active = $parent; //parent tag found
-					else array_push($this->active->container, new Element('!', 'Error: Tag not found! (`'.$obj->tag.'` not open)')); //html comment
+					else array_push($this->active->container, new Element('!', 'Error: Tag not found! (`'.$obj->tag.'` not open)')); //error as html comment
 				}
 				else //if($obj->flag === true || !empty($obj->container) || !empty($obj->attrib)) //same
 				{
@@ -130,6 +130,15 @@ class Element implements \Countable //of HTML DOM (data object model)
 	public function clear(): void
 	{
 		$this->container = []; //destroy all children objects
+	}
+
+	public function class(?array $class = null, bool $rem = false): void //class set or clear
+	{
+		$classes = [];
+		if(isset($this->attrib['class'])) $classes = explode(' ', $this->attrib['class']); //exists something classes?
+		if($rem) $classes = array_diff($classes, $class); //remove
+		else $classes = array_unique(array_merge($classes, $class)); //add
+		$this->attrib['class'] = empty($classes) ? null : implode(' ', $classes); //set
 	}
 
 	public function attrib(?array $attrib = null): void //attributes set or clear
@@ -264,6 +273,7 @@ class Page extends Singleton
 	private static array $open_tags = []; //control strings
 
 	private static object $html; //master element
+	private static bool $output = true; //true = add tags to dom, false = only return object
 
 	private static float $starttime = 0; //loading page start time
 	private static string $title = ''; //page title
@@ -325,6 +335,11 @@ class Page extends Singleton
 		return microtime(true) - self::$starttime;
 	}
 
+	public static function Output(bool $output): void
+	{
+		self::$output = $output;
+	}
+
 	//$type:
 	//null - singular tag - void element - <$name />
 	//true - paired tag - only open element - <$name>
@@ -374,11 +389,16 @@ class Page extends Singleton
 
 	public static function tag(string $tag, mixed ...$data): object 
 	{
-		if(empty($tag)) return self::$html->add(implode('', $data)); //add text (directly)
+		if(empty($tag))
+		{
+
+			die('text');
+			//return self::$html->add(implode('', $data)); //add text (directly)
+		}
 		else
 		{
 			$obj = new Element($tag, ...$data); //make object
-			self::$html->add($obj); //add object
+			if(self::$output) self::$html->add($obj); //add object
 			return $obj; //return new object
 		}
 	}
@@ -386,7 +406,7 @@ class Page extends Singleton
 	public static function __callStatic($name, $data): object //Page::{method} (is_callable([__CLASS__, 'method_name']) also triggers this function)
 	{
 		$obj = new $name(...$data); //try to load class and create object
-		self::$html->add($obj); //add object
+		if(self::$output) self::$html->add($obj); //add object
 		return $obj; //return new object
 	}
 
