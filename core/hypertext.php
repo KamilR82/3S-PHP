@@ -43,6 +43,16 @@ class Element implements \Countable //of HTML DOM (data object model)
 		}
 	}
 
+	public function tag(): string
+	{
+		return $this->tag;
+	}
+
+	public function is(string $tag): bool
+	{
+		return strcasecmp($this->tag, $tag) === 0;
+	}
+
 	public function add(string|object ...$objects): object //add text(s) or element object(s) to active element node
 	{
 		foreach($objects as $obj)
@@ -76,12 +86,16 @@ class Element implements \Countable //of HTML DOM (data object model)
 
 	public function parent(string $tag = ''): ?object //get parent element (by name)
 	{
-		//if(is_null($this->parent)) return $this; //has no parent = return self
-		if(!is_null($this->parent) && strlen($tag)) //want exact tag
+		if(!is_null($this->parent) && !empty($tag)) //want exact tag
 		{
 			if(strcasecmp($tag, $this->tag) != 0) return $this->parent->parent($tag); //recursion
 		}
 		return $this->parent;
+	}
+
+	public function active(): object
+	{
+		return $this->active;
 	}
 
 	public function activate(): object //reset this active element to self (this)
@@ -132,13 +146,22 @@ class Element implements \Countable //of HTML DOM (data object model)
 		$this->container = []; //destroy all children objects
 	}
 
-	public function class(?array $class = null, bool $rem = false): void //class set or clear
+	public function class(null|string|array $add = null, null|string|array $rem = null): ?array
 	{
-		$classes = [];
-		if(isset($this->attrib['class'])) $classes = explode(' ', $this->attrib['class']); //exists something classes?
-		if($rem) $classes = array_diff($classes, $class); //remove
-		else $classes = array_unique(array_merge($classes, $class)); //add
-		$this->attrib['class'] = empty($classes) ? null : implode(' ', $classes); //set
+		$classes = isset($this->attrib['class']) ? explode(' ', $this->attrib['class']) : []; //exists classes?
+		if(!is_null($add)) //append
+		{
+			if(is_string($add)) $add = explode(' ', $add);
+			$classes = array_unique(array_merge($classes, $add));
+		}
+		if(!is_null($rem)) //remove
+		{
+			if(is_string($rem)) $rem = explode(' ', $rem);
+			$classes = array_diff($classes, $rem);
+		}
+		if(empty($classes)) unset($this->attrib['class']); //unset
+		else $this->attrib['class'] = implode(' ', $classes); //set
+		return $classes;
 	}
 
 	public function attrib(?array $attrib = null): void //attributes set or clear
@@ -245,6 +268,8 @@ class Element implements \Countable //of HTML DOM (data object model)
 		if(strcasecmp($name, 't') == 0) return $this->active->add(implode('', ...$data)); //without tag name is only text
 		else return $this->active->add(new Element($name, ...$data)); //create it :)
 	}
+
+	//custom tag aliases
 
 	function href(bool|string $content = true, ?string $href = null, mixed ...$data): object //a hyperlink
 	{
@@ -365,7 +390,7 @@ class Page extends Singleton
 					$prev_tag = $tag;
 					if($last_tag === $tag) return; //required tag reached
 				}
-				echo '<!-- Debug: Tag `'.$tag.'` not found! (not open) -->'; //tag not open
+				echo '<!-- Tag `'.$tag.'` not found! (not open) -->'; //tag not open
 			}
 			else if(strlen($prev_tag) && strlen($tag)) echo PHP_EOL . str_repeat("\t", count(self::$open_tags)); //pretty print for debug HTML code
 
@@ -381,19 +406,18 @@ class Page extends Singleton
 					echo '</'.$last_tag.'>';
 					if($last_tag === $tag) return; //required tag reached
 				}
-				echo '<!-- Debug: Tag `'.$tag.'` not found! (not open) -->'; //tag not open
+				echo '<!-- Tag `'.$tag.'` not found! (not open) -->'; //tag not open
 			}
 		}
 		echo $data; //output
 	}
 
-	public static function tag(string $tag, mixed ...$data): object 
+	public static function tag(string $tag, mixed ...$data): ?object 
 	{
 		if(empty($tag))
 		{
-
-			die('text');
-			//return self::$html->add(implode('', $data)); //add text (directly)
+			self::$html->add(implode('', $data)); //add text (directly)
+			return null;
 		}
 		else
 		{
@@ -430,7 +454,7 @@ class Page extends Singleton
 Page::Initialize();
 
  //replace of `echo` command
-function t(string $data): object { return Page::tag('', $data); } //text - not HTML tag (empty tag name is only text)
+function t(string $data): void { Page::tag('', $data); } //text - not HTML tag (empty tag name is only text)
 
 //html tag aliases
 function title(string $data): object { return Page::tag(__FUNCTION__, $data); }

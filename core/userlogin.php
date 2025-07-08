@@ -274,28 +274,33 @@ class Userlogin extends Singleton
 		return false;
 	}
 
-	public static function MenuFilter(array $menu): array
+	public static function MenuFilter(array &$menu): array
 	{
-		foreach($menu as $key => &$value) //mind the reference
+		foreach($menu as $key => &$item)
 		{
-			if(is_array($value) && count($value) > 1)
+			if(is_array($item))
 			{
-				if(is_array($value[1])) $value[1] = self::MenuFilter($value[1]); //call_user_func(__CLASS__.'::'.__FUNCTION__, $value[1]); //same
-				else
+				$p = null; //Permits
+				$pl = null; //PermitLevel
+				foreach($item as $chunk)
 				{
-					switch(count($value))
+					if(is_array($chunk)) $item = self::MenuFilter($chunk); //has submenu -> recursive filter submenu
+					else if(is_object($chunk)) //object
 					{
-						case 3: //has Permits
-							if(!self::GetPermission($value[2])) unset($menu[$key]);
-							break;
-						case 4: //has Permits & PermitLevel
-							if(!(self::GetPermission($value[2]) & $value[3]->value)) unset($menu[$key]);
-							break;
+						if($chunk instanceof Permits) $p = $chunk;
+						if($chunk instanceof PermitLevel) $pl = $chunk;
 					}
+				}
+				if($p)
+				{
+					if($pl)
+					{
+						if(!(self::GetPermission($p) & $pl->value)) unset($menu[$key]);
+					}
+					else if(!self::GetPermission($p)) unset($menu[$key]);
 				}
 			}
 		}
-		unset($value); //kill the reference
 		return $menu;
 	}
 }

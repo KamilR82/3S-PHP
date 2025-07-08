@@ -9,29 +9,40 @@ class Menu extends Element
 		parent::__construct($tag, $attrib); //false
 	}
 
-	
-	public function load(array $menu, string $active = 'active'): void
+	private function add_li_content(mixed $item): void //string|object $item
+	{
+		if(is_string($item)) $this->add($item); //string
+		else if(is_object($item)) //object
+		{
+			if($item instanceof Element)
+			{
+				if($item->is('a') && isset($item->attrib['href']) && Request::IsFileName($item->attrib['href'])) $this->active()->class('active'); //set <li class="active">
+				$this->add($item); //object Element
+			}
+			else $this->add(new Element('!', 'Menu::load - Unsupported menu item ('.get_class($item).')')); //object unknown
+		}
+		else $this->add(new Element('!', 'Menu::load - Unsupported menu item ('.gettype($item).')')); //unknown
+	}
+
+	public function load(array $menu): void
 	{
 		$this->add(new Element('ul', true));
 		foreach($menu as $item)
 		{
-			if(is_array($item)) //array
+			$li = new Element('li', true); //li create
+			$this->add($li);
+
+			if(is_array($item)) //item as array
 			{
-				$attrib = []; //li attributes
-				if(isset($item['title'])) $attrib['title'] = $item['title']; //li title
-				if(isset($item['class'])) $attrib['class'] = $item['class']; //li class
-				if(isset($item['href'])) $item['item'] = new Element('a', $item['item'] ?? $item[0] ?? null, href: $item['href']); //add manual href
-				$li = new Element('li', true, $item['item'] ?? $item[0] ?? null, $attrib); //li create
-				if(Str::NotEmpty($active))
+				foreach($item as $chunk)
 				{
-					if(isset($item['active']) && Request::IsFileName($item['active'])) $li->class([$active]); //active flag
-					elseif(isset($item['href']) && Request::IsFileName($item['href'])) $li->class([$active]); //active by href
+					if(is_array($chunk)) $this->load($chunk); //has submenu -> recursive parse submenu
+					else $this->add_li_content($chunk);
 				}
-				$this->add($li);
-				if(isset($item['children']) && is_array($item['children']) && !empty($item['children'])) $this->load($item['children'], $active); //has submenu -> recursive parse submenu
-				$this->add(new Element('li', false));
 			}
-			else $this->add(new Element('li', $item)); //object or string
+			else $this->add_li_content($item); //object or string
+
+			$this->add(new Element('li', false));
 		}
 		$this->add(new Element('ul', false));
 	}

@@ -296,7 +296,7 @@ class App extends Singleton
 			'Language', 'Lang' => 'language', 
 			'Logger', 'Log' => 'logger',
 			'DataBase', 'DB' => 'database',
-			'Userlogin', 'User' => 'userlogin', 
+			'Userlogin', 'User', 'Permits', 'PermitLevel' => 'userlogin', 
 			'Method' => 'class_form', //enum
 			default => 'class_'.$class,
 		}) . self::extension;
