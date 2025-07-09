@@ -274,7 +274,7 @@ class Userlogin extends Singleton
 		return false;
 	}
 
-	public static function MenuFilter(array &$menu): array
+	public static function MenuFilter(array $menu): array
 	{
 		foreach($menu as $key => &$item)
 		{
@@ -282,9 +282,9 @@ class Userlogin extends Singleton
 			{
 				$p = null; //Permits
 				$pl = null; //PermitLevel
-				foreach($item as $chunk)
+				foreach($item as &$chunk)
 				{
-					if(is_array($chunk)) $item = self::MenuFilter($chunk); //has submenu -> recursive filter submenu
+					if(is_array($chunk)) $chunk = self::MenuFilter($chunk); //has submenu -> recursive filter submenu
 					else if(is_object($chunk)) //object
 					{
 						if($chunk instanceof Permits) $p = $chunk;

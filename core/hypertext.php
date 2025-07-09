@@ -31,7 +31,7 @@ class Element implements \Countable //of HTML DOM (data object model)
 	{
 		$this->active = $this;
 		$this->tag = $tag;
-		$this->singular = array_search($this->tag, ['img', 'br', 'hr', 'input', 'link', 'col', 'area', 'meta', 'base', //list of all singular tags
+		$this->singular = array_search($this->tag, ['img', 'br', 'hr', 'input', 'link', 'col', 'meta', 'base', 'area', 'source', 'track', //list of all singular tags
 		/*svg*/ 'path', 'rect', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'image', 'stop', 'set', 'animate', 'animateMotion', 'animateTransform'], true) !== false;
 
 		foreach($data as $key => $val) //parse data
@@ -64,24 +64,36 @@ class Element implements \Countable //of HTML DOM (data object model)
 				if($obj->flag === false && empty($obj->container) && empty($obj->attrib))
 				{
 					//echo('<!-- / '.$this->active->tag.' <- '.$obj->tag.' -->'.PHP_EOL); //DEBUG - Close Tag
-					$parent = $this->active->parent($obj->tag); //try to close
-					if($parent) $this->active = $parent; //parent tag found
-					else array_push($this->active->container, new Element('!', 'Error: Tag not found! (`'.$obj->tag.'` not open)')); //error as html comment
+					$this->close($obj->tag); //try to close
 				}
 				else //if($obj->flag === true || !empty($obj->container) || !empty($obj->attrib)) //same
 				{
 					//echo('<!-- + '.$this->active->tag.' -> '.$obj->tag.' -->'.PHP_EOL); //DEBUG - Open Tag
-					$obj->parent = $this->active; //set parent to child
-					array_push($this->active->container, $obj); //add child
-					if($obj->flag === false) continue; //don't keep open when is forced close
-					if($obj->singular) continue; //don't keep open when is singular
-					if($obj->flag !== true && !empty($obj->container)) continue; //don't keep open when contain data and is not explicitly open
-					if($obj->flag === true || !empty($obj->attrib)) $this->active = $obj; //keep open when is explicitly open or attributes is set
+					$this->open($obj);
 				}
 			}
 			else throw new \Exception('Element::add - Unsupported object type. Expected object `Element` or its child.');
 		}
 		return $this->active; //parent of added child
+	}
+
+	public function open(object $obj): object //add one child element object
+	{
+		$obj->parent = $this->active; //set parent to child
+		array_push($this->active->container, $obj); //add child
+		//set (or not) active
+		if($obj->singular || $obj->flag === false) return $this->active; //don't keep open when is singular or forced close
+		if($obj->flag !== true && !empty($obj->container)) return $this->active; //don't keep open when contain data and is not explicitly open
+		if($obj->flag === true || !empty($obj->attrib)) $this->active = $obj; //SET - keep open when is explicitly open or attributes is set
+		return $this->active;
+	}
+
+	public function close(string $tag = ''): object //close child 
+	{
+		$parent = $this->active->parent($tag); //try to close
+		if($parent) $this->active = $parent; //parent tag found
+		else array_push($this->active->container, new Element('!', 'Error: Tag not found! (`'.$tag.'` not open)')); //error as html comment
+		return $this->active;
 	}
 
 	public function parent(string $tag = ''): ?object //get parent element (by name)
@@ -93,20 +105,14 @@ class Element implements \Countable //of HTML DOM (data object model)
 		return $this->parent;
 	}
 
-	public function active(): object
+	public function active(): object //get
 	{
 		return $this->active;
 	}
 
-	public function activate(): object //reset this active element to self (this)
+	public function activate(): object //reset active element to self
 	{
 		return $this->active = $this; //set self to active
-	}
-
-	public function close(): object //close self - set parent active element to self (parent)
-	{
-		if($this->parent) return $this->parent->activate();
-		else return $this; //no parent = no close = return self
 	}
 
 	public function first(?string $tag = null, ?string $id = null): ?object //get child (by name and id)
@@ -459,7 +465,7 @@ function t(string $data): void { Page::tag('', $data); } //text - not HTML tag (
 //html tag aliases
 function title(string $data): object { return Page::tag(__FUNCTION__, $data); }
 function script(string $data): object { return Page::tag(__FUNCTION__, $data); }
-function noscript(string $data = 'Your browser does not support JavaScript!'): object { return Page::tag(__FUNCTION__, $data); }
+function noscript(string $data = 'Your browser does not support JavaScript!'): object { return Page::tag(__FUNCTION__, $data); } //can be used in both <head> and <body>. When used inside <head>, could only contain <link>, <style>, and <meta> elements.
 
 //head tags
 function base(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - specifies the base URL and/or target for all relative URLs
@@ -475,36 +481,47 @@ function nav(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data);
 function main(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //main content of the document
 function footer(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //defines a footer for a document or section
 function dialog(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //defines a dialog box or subwindow (popup dialogs and modals)
-function section(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block document section
-function article(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block self-contained article
-function div(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block division container
-function p(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block paragraph of content
-function pre(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block preformatted text
-function blockquote(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block long quotation
-function figure(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //block self-contained content, like illustrations, diagrams, photos, etc.
+
+//blocks
+function section(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //document section
+function article(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //self-contained article
+function div(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //division container
+function p(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //paragraph of content
+function pre(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //preformatted text
+function blockquote(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //long quotation
+function figure(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //self-contained content, like illustrations, diagrams, photos, etc.
 function figcaption(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //<figcaption> element is FIRST or LAST child of the <figure> element
-function span(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline part of content
-function code(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline text as computer code
-function h1(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 1
-function h2(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 2
-function h3(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 3
-function h4(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 4 
-function h5(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 5
-function h6(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //heading 6
-function strong(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline important text (bold)
-function small(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline smaller text
-function mark(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline marked/highlighted text
-function cite(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline title of a work (italic)
-function dfn(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline definition term
-function del(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline deleted part
-function ins(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline inserted part
-function sub(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline subscript
-function sup(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline superscript
-function em(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline emphasized (italic)
-function s(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline strikethrough (incorrect text)
-function q(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline short quotation
-function i(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline alternate text, technical term, a phrase from another language (italic)
-function b(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inline bold text without any extra importance (bold)
+
+//headings
+function h1(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function h2(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function h3(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function h4(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function h5(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function h6(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+
+//breaks
+function br(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - single line break
+function hr(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - horizontal rule - defines a thematic break
+
+//inlines
+function span(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //part of content
+function code(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //text as computer code
+function samp(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //sample output from a computer program
+function strong(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //important text (bold)
+function small(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //smaller text
+function mark(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //marked/highlighted text
+function cite(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //title of a work (italic)
+function dfn(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //definition term
+function del(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //deleted part
+function ins(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //inserted part
+function sub(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //subscript
+function sup(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //superscript
+function em(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //emphasized (italic)
+function s(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //strikethrough (incorrect text)
+function q(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //short quotation
+function i(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //alternate text, technical term, a phrase from another language (italic)
+function b(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //bold text without any extra importance (bold)
 function a(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //anchor
 function href(bool|string $content = '', ?string $href = null, mixed ...$data): object //a hyperlink
 {
@@ -515,10 +532,12 @@ function click(bool|string $content = '', ?string $onclick = null, mixed ...$dat
 	return Page::tag('a', $content, ['href' => 'javascript:;', 'onclick' => $onclick], $data); //run only onclick javascript
 }
 
+//container
 function template(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //container to hold hidden content when the page loads. can be rendered later with a JavaScript
 function canvas(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //container for a script graphics
 function svg(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //container for Scalable Vector Graphics
 
+//list
 function menu(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //unordered list (same as ul)
 function ul(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //unordered list (same as menu)
 function ol(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //ordered list
@@ -527,6 +546,7 @@ function dl(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); 
 function dt(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //term
 function dd(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //description
 
+//table
 function table(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function caption(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function colgroup(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
@@ -538,6 +558,7 @@ function tr(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); 
 function th(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function td(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 
+//form
 function form(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function fieldset(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function legend(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
@@ -550,8 +571,7 @@ function textarea(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$d
 function input(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular
 function radio(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular
 
-function br(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - single line break
-function hr(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - horizontal rule - defines a thematic break
+//audio/video
 function img(string|array $src = [], string|array $alt = [], mixed ...$data): object //singular - image
 {
 	if(is_string($src)) $src = array('src' => $src);
@@ -560,3 +580,8 @@ function img(string|array $src = [], string|array $alt = [], mixed ...$data): ob
 }
 function map(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //img usemap="#name"
 function area(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - defines an area inside an image map
+function picture(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //image resources - contains one or more <source> tags and one <img> tag
+function audio(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //embed sound content such as music or other audio streams
+function video(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //embed video content such as a movie clip or other video streams
+function source(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - specify multiple media resources for media elements
+function track(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - specifies text tracks for <audio> or <video> elements
