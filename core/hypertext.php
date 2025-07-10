@@ -12,11 +12,10 @@ class Element implements \Countable //of HTML DOM (data object model)
 	private ?object $parent = null; //parent element or none
 
 	private string $tag = ''; //name ('' = only text in content)
-	private bool $singular = false; //false = paired
 	private ?bool $flag = null; //false = only abstract close element / true = keep open for add child elements (return this, no parent)
 
 	protected array $attrib = []; //attributes
-	private array $container = []; //inside data (text or child elements)
+	private ?array $container = []; //inside data (text or child elements), null = singular
 
 //Countable interface
 
@@ -31,8 +30,6 @@ class Element implements \Countable //of HTML DOM (data object model)
 	{
 		$this->active = $this;
 		$this->tag = $tag;
-		$this->singular = array_search($this->tag, ['img', 'br', 'hr', 'input', 'link', 'col', 'meta', 'base', 'area', 'source', 'track', //list of all singular tags
-		/*svg*/ 'path', 'rect', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'image', 'stop', 'set', 'animate', 'animateMotion', 'animateTransform'], true) !== false;
 
 		foreach($data as $key => $val) //parse data
 		{
@@ -41,6 +38,10 @@ class Element implements \Countable //of HTML DOM (data object model)
 			elseif(is_string($val) || $val instanceof Element) array_push($this->container, $val); //text or child element
 			elseif(is_bool($val)) $this->flag = $val;
 		}
+
+		//singular?
+		if(array_search($this->tag, ['img', 'br', 'hr', 'input', 'link', 'col', 'meta', 'base', 'area', 'source', 'track', //list of all singular tags
+		/*svg*/ 'path', 'rect', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'image', 'stop', 'set', 'animate', 'animateMotion', 'animateTransform'], true) !== false) $this->container = null;
 	}
 
 	public function tag(): string
@@ -79,10 +80,18 @@ class Element implements \Countable //of HTML DOM (data object model)
 
 	public function open(object $obj): object //add one child element object
 	{
+		if(App::Env('APP_DEBUG')) //add tag attribute `data-tag-caller`
+		{
+			$backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS); //ignore arguments
+			$last = end($backtrace); //array last item
+			if(isset($last['file'])) $obj->attrib(['data-tag-caller' => basename($last['file']).':'.($last['line'])]); //__destruct has no file & line
+			else $obj->attrib(['data-tag-caller' => ($last['class']??'') . ($last['type']??'') . $last['function']]); //class & function
+		}
 		$obj->parent = $this->active; //set parent to child
 		array_push($this->active->container, $obj); //add child
+
 		//set (or not) active
-		if($obj->singular || $obj->flag === false) return $this->active; //don't keep open when is singular or forced close
+		if($obj->flag === false || is_null($obj->container)) return $this->active; //don't keep open when is forced close or singular
 		if($obj->flag !== true && !empty($obj->container)) return $this->active; //don't keep open when contain data and is not explicitly open
 		if($obj->flag === true || !empty($obj->attrib)) $this->active = $obj; //SET - keep open when is explicitly open or attributes is set
 		return $this->active;
@@ -186,12 +195,12 @@ class Element implements \Countable //of HTML DOM (data object model)
 		{
 			if(is_null($val) || $val === false) continue; //value can be empty, but null or false is skipped
 			if(is_array($val)) $output .= $this->attributes($val); //array recursion
-			elseif(is_int($key)) $output .= ' '.htmlspecialchars(strval($val), ENT_NOQUOTES); //value only
+			elseif(is_int($key)) $output .= ' '.preg_replace('/[^a-zA-Z0-9_-]/', '', strval($val)); //value only (without key)
 			else //$key is string
 			{
-				$key = htmlspecialchars($key, ENT_NOQUOTES); // convert <>& (does not convert any quotes)
+				$key = preg_replace('/[^a-zA-Z0-9_-]/', '', $key); //sanitize key
 				if($val === true) $output .= ' '.$key; //key only
-				else $output .= ' '.$key.'="'.htmlspecialchars(strval($val), ENT_COMPAT).'"'; //key="val" (convert only double quotes)
+				else $output .= ' '.$key.'="'.str_replace('"', '&quot;', strval($val)).'"'; //key="val" (convert double quotes only)
 			}
 		}
 		return $output;
@@ -207,7 +216,7 @@ class Element implements \Countable //of HTML DOM (data object model)
 		else //html tags
 		{
 			$output .= '<' . $this->tag . $this->attributes($this->attrib); //open tag + attributes
-			if($this->singular) $output .= ' />'; //Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
+			if(is_null($this->container)) $output .= ' />'; //singular - Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
 			else //paired tag (others)
 			{
 				$output .= '>';
@@ -215,7 +224,7 @@ class Element implements \Countable //of HTML DOM (data object model)
 				foreach($this->container as $value)
 				{
 					if($value instanceof Element) $output .= strval($value);
-					elseif(is_string($value)) $output .= str_replace(['<','>'], ['&lt;','&gt;'], $value); //htmlspecialchars($value, ENT_NOQUOTES); //no &
+					elseif(is_string($value)) $output .= str_replace(['<','>'], ['&lt;','&gt;'], $value); //sanitize data (no &)
 				}
 				//closing paired tag
 				$output .= '</'.$this->tag.'>'; //attributes are ignored
@@ -234,7 +243,7 @@ class Element implements \Countable //of HTML DOM (data object model)
 		else //html tags
 		{
 			$output = '<' . $this->tag . $this->attributes($this->attrib); //open tag + attributes
-			if($this->singular)
+			if(is_null($this->container)) //singular
 			{
 				$output .= ' />'; //Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
 				Page::echo($output, null, $this->tag); //singular
@@ -436,7 +445,7 @@ class Page extends Singleton
 	public static function __callStatic($name, $data): object //Page::{method} (is_callable([__CLASS__, 'method_name']) also triggers this function)
 	{
 		$obj = new $name(...$data); //try to load class and create object
-		if(self::$output) self::$html->add($obj); //add object
+		if(self::$output) self::$html->open($obj); //add object
 		return $obj; //return new object
 	}
 
@@ -505,6 +514,7 @@ function br(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); 
 function hr(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - horizontal rule - defines a thematic break
 
 //inlines
+function data(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //machine-readable translation of a given content
 function span(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //part of content
 function code(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //text as computer code
 function samp(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //sample output from a computer program
@@ -565,7 +575,8 @@ function legend(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$dat
 function label(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function button(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function select(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
-function option(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function datalist(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //pre-defined options for an <input> element
+function option(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //unisex (can be paired or singular (in datalist))
 function optgroup(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function textarea(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function input(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular

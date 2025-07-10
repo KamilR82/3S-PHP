@@ -15,7 +15,7 @@ class Form extends Element
 
 	public function __construct(Method $method = Method::Post, mixed ...$attrib) //NEVER use Method::Get to send sensitive data!
 	{
-		parent::__construct(strtolower(__CLASS__), $attrib, false);
+		parent::__construct(strtolower(__CLASS__), false, $attrib);
 		$this->attrib['method'] = $method->value; //convert object to string
 		if(strcasecmp($this->attrib['method'], 'post') == 0) $this->attrib['enctype'] = 'multipart/form-data'; //this value is necessary if the user will upload a file through the form
 		$this->hidden('token', Request::GetToken()); //token

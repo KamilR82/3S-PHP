@@ -6,7 +6,7 @@ class Menu extends Element
 {
 	public function __construct(string $tag = 'nav', mixed ...$attrib)
 	{
-		parent::__construct($tag, $attrib); //false
+		parent::__construct($tag, false, $attrib);
 	}
 
 	private function add_li_content(mixed $item): void //string|object $item

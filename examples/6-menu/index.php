@@ -3,7 +3,7 @@
 define('CONFIG_FILE', './../config.php'); //load config file (supported types .ini .env .php)
 require_once($_SERVER['DOCUMENT_ROOT'].'/core/singleton.php'); //initialize framework
 
-Page::Start('Form Example'); //set page title
+Page::Start('Menu Example'); //set page title
 
 h1('Menu');
 

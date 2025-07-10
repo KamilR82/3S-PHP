@@ -6,7 +6,7 @@ class SVG extends Element
 {
 	public function __construct(mixed ...$attrib)
 	{
-		parent::__construct(strtolower(__CLASS__), $attrib, false);
+		parent::__construct(strtolower(__CLASS__), false, $attrib);
 	}
 
 	//https://www.w3schools.com/graphics/svg_intro.asp

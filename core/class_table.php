@@ -23,7 +23,7 @@ class Table extends Element
 
 	public function __construct(?string $caption = null, mixed ...$attrib)
 	{
-		parent::__construct(strtolower(__CLASS__), $attrib, false);
+		parent::__construct(strtolower(__CLASS__), false, $attrib);
 		//caption
 		if(!is_null($caption)) $this->add($this->caption = new Element('caption', $caption));
 		//sort mark
