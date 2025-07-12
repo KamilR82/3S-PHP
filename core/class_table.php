@@ -25,7 +25,7 @@ class Table extends Element
 	{
 		parent::__construct(strtolower(__CLASS__), false, $attrib);
 		//caption
-		if(!is_null($caption)) $this->add($this->caption = new Element('caption', $caption));
+		if(!is_null($caption)) $this->open($this->caption = new Element('caption', $caption));
 		//sort mark
 		$this->sort_asc = new Element('span', '&#9650;'); //, ['style'=>'float: left/right;']
 		$this->sort_desc = new Element('span', '&#9660;'); //, ['style'=>'float: left/right;']
@@ -64,7 +64,7 @@ class Table extends Element
 				$this->caption->add($caption);
 				$this->caption->attrib($attrib);
 			}
-			else $this->add($this->caption = new Element('caption', $caption, $attrib));
+			else $this->open($this->caption = new Element('caption', $caption, $attrib));
 		}
 	}
 
@@ -87,9 +87,10 @@ class Table extends Element
 		if(!$this->colgroup)
 		{
 			$this->colgroup = new Element('colgroup');
-			$this->add($this->colgroup);
+			$this->open($this->colgroup);
+			$this->close('colgroup');
 		}
-		$this->colgroup->add(new Element('col', ['span' => $span, 'class' => $class]));
+		$this->colgroup->open(new Element('col', ['span' => $span, 'class' => $class]));
 	}
 
 	public function head(array $values = []): void
@@ -99,12 +100,13 @@ class Table extends Element
 		if(!$this->thead)
 		{
 			$this->thead = new Element('thead');
-			$this->add($this->thead);
+			$this->open($this->thead);
+			$this->close('thead');
 		}
 		else $this->thead->activate(); //close prev row (or any if is open)
 
 		//add row + data
-		$this->thead->add(new Element('tr', true)); //add row
+		$this->thead->open(new Element('tr', true)); //add row
 		foreach($values as $value)
 		{
 			if(is_array($value)) //sortable
@@ -129,9 +131,9 @@ class Table extends Element
 						$column = ucfirst($column); //set first char to uppercase
 					}
 				}
-				$this->thead->add(new Element('th', $attrib, $mark, new Element('a', $label, href: Request::Modify([$this->sort_table => $column]))));
+				$this->thead->open(new Element('th', $attrib, $mark, new Element('a', $label, href: Request::Modify([$this->sort_table => $column]))));
 			}
-			else $this->thead->add(new Element('th', $value)); //only string
+			else $this->thead->open(new Element('th', $value)); //only string
 		}
 	}
 
@@ -140,19 +142,20 @@ class Table extends Element
 		if(!$this->tbody)
 		{
 			$this->tbody = new Element('tbody');
-			$this->add($this->tbody);
+			$this->open($this->tbody);
+			$this->close('tbody');
 		}
 		else $this->tbody->activate(); //close prev row (or any if is open)
 
 		//add row + data
-		$this->tbody->add(new Element('tr', true)); //add row
+		$this->tbody->open(new Element('tr', true)); //add row
 		if($this->columns)
 		{
-			for($i = 0; $i < $this->columns; $i++) $this->tbody->add(new Element('td', $values[$i] ?? ''));
+			for($i = 0; $i < $this->columns; $i++) $this->tbody->open(new Element('td', $values[$i] ?? ''));
 		}
 		else //columns counter not set
 		{
-			foreach($values as $value) $this->tbody->add(new Element('td', $value));
+			foreach($values as $value) $this->tbody->open(new Element('td', $value));
 		}
 	}
 
@@ -161,19 +164,20 @@ class Table extends Element
 		if(!$this->tfoot)
 		{
 			$this->tfoot = new Element('tfoot');
-			$this->add($this->tfoot);
+			$this->open($this->tfoot);
+			$this->close('tfoot');
 		}
 		else $this->tfoot->activate(); //close prev row (or any if is open)
 
 		//add row + data
-		$this->tfoot->add(new Element('tr', true)); //add row
+		$this->tfoot->open(new Element('tr', true)); //add row
 		if($this->columns)
 		{
-			for($i = 0; $i < $this->columns; $i++) $this->tfoot->add(new Element('td', $values[$i] ?? ''));
+			for($i = 0; $i < $this->columns; $i++) $this->tfoot->open(new Element('td', $values[$i] ?? ''));
 		}
 		else //columns counter not set
 		{
-			foreach($values as $value) $this->tfoot->add(new Element('td', $value));
+			foreach($values as $value) $this->tfoot->open(new Element('td', $value));
 		}
 	}
 }

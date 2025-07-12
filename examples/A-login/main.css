@@ -200,7 +200,7 @@ nav ul li a {
 nav ul li a:hover { background-color: #e2e2e2; color: #000; }
 nav ul li a.active { background-color: #d1d1d1; color: #000; font-weight: bold; }
 nav ul li a img { width: 32px; height: 32px; margin-right: 20px; }
-nav ul li input[type='checkbox'] {
+nav ul li input[type="checkbox"] {
 	margin-left: auto; /* align to right */
 	appearance: none;
 	display: flex;

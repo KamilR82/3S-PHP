@@ -17,4 +17,6 @@ p(true, 'Congratulations, you have successfully launched '); //true = keep tag o
 strong(App::Env('APP_NAME')); //text with strong importance
 p(false); //close tag
 
-t('Simple text at the end.'); //when no tag is needed, this is a replacement for the echo function
+p('Congratulations, you have successfully launched ', strong(App::Env('APP_NAME'))); //same as above
+
+txt('Simple text at the end.'); //when no tag is needed, this is a replacement for the echo function

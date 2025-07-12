@@ -6,23 +6,20 @@ require_once('singleton.php');
 
 App::Protect(__FILE__);
 
-class Element implements \Countable //of HTML DOM (data object model)
+class Element implements \Countable, \IteratorAggregate //of HTML DOM (data object model)
 {
-	private object $active; //active element for add child
+	private object $active; //active element for add child (pointer)
 	private ?object $parent = null; //parent element or none
 
-	private string $tag = ''; //name ('' = only text in content)
-	private ?bool $flag = null; //false = only abstract close element / true = keep open for add child elements (return this, no parent)
+	private string $tag = ''; //name ('' = text content, ! = html comment)
+	private ?bool $flag = null; //false = abstract close element / true = keep open for add child elements (return this, no parent)
 
 	protected array $attrib = []; //attributes
 	private ?array $container = []; //inside data (text or child elements), null = singular
 
-//Countable interface
-
-	public function count() : int //child elements count
-	{
-		return count($this->container);
-	}
+//Interfaces
+	public function count(): int { return count($this->container); } //Countable
+    public function getIterator(): Traversable { return new ArrayIterator($this->container ?: []); } //IteratorAggregate
 
 //Construct
 
@@ -34,9 +31,19 @@ class Element implements \Countable //of HTML DOM (data object model)
 		foreach($data as $key => $val) //parse data
 		{
 			if(is_string($key)) $this->attrib[$key] = $val; //attributes (by named variables)
-			elseif(is_array($val)) $this->attrib = array_merge($this->attrib, $val); //attributes (by array)
-			elseif(is_string($val) || $val instanceof Element) array_push($this->container, $val); //text or child element
 			elseif(is_bool($val)) $this->flag = $val;
+			elseif(is_array($val)) $this->attrib = array_merge($this->attrib, $val); //attributes (by array)
+			elseif(is_string($val)) array_push($this->container, $val); //pure text
+			elseif($val instanceof Element) //child element
+			{
+				if($val->parent) //exist in DOM -> move (same object can exist only once)
+				{
+					$key = array_search($val, $val->parent->container, true); //find in parent container
+					if($key !== false) unset($val->parent->container[$key]); //remove
+					$val->parent = $this; //set new parent
+				}
+				array_push($this->container, $val); //add
+			}
 		}
 
 		//singular?
@@ -78,20 +85,22 @@ class Element implements \Countable //of HTML DOM (data object model)
 		return $this->active; //parent of added child
 	}
 
-	public function open(object $obj): object //add one child element object
+	public function open(object $obj): object //add ONE child element OBJECT
 	{
-		if(App::Env('APP_DEBUG')) //add tag attribute `data-tag-caller`
+		if(App::Env('APP_DEBUG')) //add tag attribute `data-tag-caller` and `data-tag-id`
 		{
 			$backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS); //ignore arguments
 			$last = end($backtrace); //array last item
 			if(isset($last['file'])) $obj->attrib(['data-tag-caller' => basename($last['file']).':'.($last['line'])]); //__destruct has no file & line
 			else $obj->attrib(['data-tag-caller' => ($last['class']??'') . ($last['type']??'') . $last['function']]); //class & function
+			$obj->attrib(['data-tag-id' => strval($obj)]); //element object id
 		}
+
 		$obj->parent = $this->active; //set parent to child
 		array_push($this->active->container, $obj); //add child
 
 		//set (or not) active
-		if($obj->flag === false || is_null($obj->container)) return $this->active; //don't keep open when is forced close or singular
+		if($obj->flag === false || is_null($obj->container)) return $this->active; //don't keep open when is singular or forced close
 		if($obj->flag !== true && !empty($obj->container)) return $this->active; //don't keep open when contain data and is not explicitly open
 		if($obj->flag === true || !empty($obj->attrib)) $this->active = $obj; //SET - keep open when is explicitly open or attributes is set
 		return $this->active;
@@ -158,7 +167,7 @@ class Element implements \Countable //of HTML DOM (data object model)
 
 	public function clear(): void
 	{
-		$this->container = []; //destroy all children objects
+		$this->container = []; //destroy all children objects and text inside element
 	}
 
 	public function class(null|string|array $add = null, null|string|array $rem = null): ?array
@@ -206,39 +215,12 @@ class Element implements \Countable //of HTML DOM (data object model)
 		return $output;
 	}
 
-	public function __toString(): string //magic method -> convert object to HTML string
-	{
-		$output = '';
-		if($this->tag === '!') //html comment
-		{
-			$output .= '<!-- '.implode(' ', $this->container).' -->';
-		}
-		else //html tags
-		{
-			$output .= '<' . $this->tag . $this->attributes($this->attrib); //open tag + attributes
-			if(is_null($this->container)) $output .= ' />'; //singular - Syntactic sugar for self-closing void element. In html 5 is optional, but recommended.
-			else //paired tag (others)
-			{
-				$output .= '>';
-				//container
-				foreach($this->container as $value)
-				{
-					if($value instanceof Element) $output .= strval($value);
-					elseif(is_string($value)) $output .= str_replace(['<','>'], ['&lt;','&gt;'], $value); //sanitize data (no &)
-				}
-				//closing paired tag
-				$output .= '</'.$this->tag.'>'; //attributes are ignored
-			}
-		}
-		return $output;
-	}
-
 	public function echo(): void
 	{
 		if($this->tag === '!') //html comment
 		{
 			$output = '<!-- '.implode(' ', $this->container).' -->';
-			Page::echo($output, null);
+			Page::echo($output, null, '!'); //Page::echo($output, null); //without tag - do not break the line
 		}
 		else //html tags
 		{
@@ -265,9 +247,21 @@ class Element implements \Countable //of HTML DOM (data object model)
 		}
 	}
 
-    public function __debugInfo(): array
+	public function __toString(): string //echo($obj) / strval($obj)
 	{
-        return array_merge([$this->tag], $this->container); //return array_merge([$this->tag], $this->attrib, $this->container);
+		return strval(spl_object_id($this)); //return ''; //used for concatenate tags with dots
+	}
+
+    public function __debugInfo(): array //var_dump($obj)
+	{
+		return array(
+			'Tag' => $this->tag,
+			'TagID' => spl_object_id($this), //'TagHash' => md5(spl_object_hash($this)),
+			'Parent' => isset($this->parent) ? $this->parent->tag : null,
+			'ParentID' => isset($this->parent) ? spl_object_id($this->parent) : null,
+			'Children' => count($this), //'Children' => $this->container ?: [],
+			'Attributes' => count($this->attrib), //'Attributes' => $this->attrib
+		);
     }
 
 	public function __destruct()
@@ -468,13 +462,15 @@ class Page extends Singleton
 
 Page::Initialize();
 
- //replace of `echo` command
-function t(string $data): void { Page::tag('', $data); } //text - not HTML tag (empty tag name is only text)
+//text and comment
+function txt(string $data): void { Page::tag('', $data); } //text-only, not HTML tag (empty tag name is only text)
+function rem(string $data = ''): void { Page::tag('!', $data); } //text-only, not support any attributes
+function comment(string $data = ''): void { Page::tag('!', $data); } //same as rem
 
 //html tag aliases
-function title(string $data): object { return Page::tag(__FUNCTION__, $data); }
-function script(string $data): object { return Page::tag(__FUNCTION__, $data); }
-function noscript(string $data = 'Your browser does not support JavaScript!'): object { return Page::tag(__FUNCTION__, $data); } //can be used in both <head> and <body>. When used inside <head>, could only contain <link>, <style>, and <meta> elements.
+function title(string $data): object { return Page::tag(__FUNCTION__, $data); } //must be text-only, required in HTML document, only once
+function script(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function noscript(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //can be used in both <head> and <body>. When used inside <head>, could only contain <link>, <style>, and <meta> elements.
 
 //head tags
 function base(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - specifies the base URL and/or target for all relative URLs

@@ -9,7 +9,7 @@ Page::Start('Table Example'); //set page title
 //heading
 h1(Page::Title()); //get page title
 
-
+rem('Table first');
 
 //table
 $table = Page::Table('Table', class: 'table_class'); //caption
@@ -35,7 +35,7 @@ $table->foot(['1st', '2nd', '3th', '4th']); //foot row
 $table->foot([3 => '4st']); //foot row
 
 
-br() . br();
+br() . rem('Table second') . br();
 
 
 //table sort
@@ -49,7 +49,7 @@ $table->body(['1', '2', '3', '4']);
 $table->body(['1', '2', '3', '4']);
 
 
-br() . br();
+br() . rem('Table procedural style') . br();
 
 
 table(true); //open table

@@ -12,7 +12,7 @@ Page::Start('Basics Example'); //set page title
 h1(Page::Title()); //get page title
 
 //links in section
-section(class: 'links');
+section(class: 'links'); //open
 href();
 a('Link to nowhere.');
 a('Link to this file.', href: '');
@@ -20,34 +20,38 @@ a('Link to other file.', href: 'home.php');
 href('Link to nowhere.');
 href('Link to this file.', '');
 href('Link to other file.', 'home.php');
-section(false);
+section(false); //close
 
 br(); //create empty tag
 
-section(true) . strong('dot separated elements') . a('Link to nowhere.') . t('inside section') . section(false); //elements in section (inline)
+section(true) . strong('dot separated elements') . a('Link to nowhere.') . txt('inside section') . section(false); //elements in section (inline)
+section() . strong('dot separated elements') . a('Link to nowhere.') . txt('inside section') . section(false); //true not needed but recommended
+section(['id'=>'section']) . strong('dot separated elements') . a('Link to nowhere.') . txt('inside section') . section(false); //same with attributes
+section(id: 'section') . strong('dot separated elements') . a('Link to nowhere.') . txt('inside section') . section(false); //same
+section(strong('dot separated elements'), a('Link to nowhere.'), 'inside section', id: 'section'); //same (but positional argument must be after named arguments)
 
-br() . br();
+br() . rem('comment') . br();
 
 //div
-div(true) . t('Image in `div` tag') . img('test.png') . t(' and some text around.') . div(false); //div with img and text
+div(true) . txt('Image in `div` tag') . img('test.png') . txt(' and some text around.') . div(false); //div with img and text
+div('Image in `div` tag', img('test.png'), ' and some text around.'); //same
 
 br() . br();
 
 div('Test', 'Test', class: 'basic_div', id: 'basic_div'); //<div class="basic_div" id="basic_div">TestTest</div>
-//or
 div(['class'=>'basic_div', 'id'=>'basic_div'], 'Test', 'Test'); //same
-//or
 div('Test', ['class'=>'basic_div', 'id'=>'basic_div'], 'Test'); //same
-//or
 div('Test', 'Test', ['class'=>'basic_div', 'id'=>'basic_div']); //same
-//or
 div('Test', ['class'=>'basic_div'], 'Test', ['id'=>'basic_div']); //same
 
+br() . comment('comment too') . br();
 
 //closing tags
 section(true) . div(true) . div(true) . div(true) . p('...and now close all open tags inside <section> tag'). section(false);
+section(true, div(div(div(p('same as above'))))). section(false); //same
+section(div(div(div(p('same as above'))))); //same
 
-section(); //create empty paired tag (open and close)
+br() . comment() . br(); //empty comment
 
 //image
 section(id: 'images'); //open tag (if there are attributes, no need to set `true` and the tag will remain open)
@@ -57,6 +61,8 @@ img('test.png', 'Alternate text for an image', width: 200, height: 200) . br();
 //or
 img(src: 'test.png', alt: 'Alternate text for an image', width: 200, height: 200) . br();
 section(false); //close tag
+
+rem(); //empty comment too (script delimiter)
 
 //text
 p('End of ', Page::Title());
