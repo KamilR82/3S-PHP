@@ -6,7 +6,10 @@ require_once('singleton.php');
 
 App::Protect(__FILE__);
 
-class Element implements \Countable, \IteratorAggregate //of HTML DOM (data object model)
+//DEFAULT CONSTANTS
+define('APP_PRETTY_PRINT', true); //pretty output html code
+
+class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element of HTML DOM (data object model)
 {
 	private object $active; //active element for add child (pointer)
 	private ?object $parent = null; //parent element or none
@@ -19,7 +22,12 @@ class Element implements \Countable, \IteratorAggregate //of HTML DOM (data obje
 
 //Interfaces
 	public function count(): int { return count($this->container); } //Countable
-    public function getIterator(): Traversable { return new ArrayIterator($this->container ?: []); } //IteratorAggregate
+	public function getIterator(): Traversable { return new ArrayIterator($this->container ?: []); } //IteratorAggregate (foreach)
+	//ArrayAccess (data[key])
+    public function offsetExists($offset): bool { return boolval($this->first($offset)); } //isset() or empty()
+    public function offsetUnset($offset): void { $this->remove($offset); } //remove object
+    public function offsetGet($offset): ?object { return $this->first($offset); } //get object
+    public function offsetSet($offset, $value): void { throw new \Exception('Element[key] set is unsupported. Use `Element->add` or `Element->open`'); }
 
 //Construct
 
@@ -215,12 +223,12 @@ class Element implements \Countable, \IteratorAggregate //of HTML DOM (data obje
 		return $output;
 	}
 
-	public function echo(): void
+	public function echo(): void //tree traverse
 	{
 		if($this->tag === '!') //html comment
 		{
 			$output = '<!-- '.implode(' ', $this->container).' -->';
-			Page::echo($output, null, '!'); //Page::echo($output, null); //without tag - do not break the line
+			Page::echo($output, null, $this->tag); //without tag = do not break the line
 		}
 		else //html tags
 		{
@@ -233,16 +241,24 @@ class Element implements \Countable, \IteratorAggregate //of HTML DOM (data obje
 			else //paired tag (others)
 			{
 				$output .= '>';
-				Page::echo($output, true, $this->tag); //open paired tag
-				//container
-				foreach($this->container as $value)
+				if(empty($this->container)) //no children
 				{
-					if($value instanceof Element) $value->echo();
-					elseif(is_string($value)) Page::echo(str_replace(['<','>'], ['&lt;','&gt;'], $value)); //htmlspecialchars($value, ENT_NOQUOTES); //no &
+					$output .= '</'.$this->tag.'>'; //close tag on same line
+					Page::echo($output, null, $this->tag); //send like a singular
 				}
-				//closing paired tag
-				$output = '</'.$this->tag.'>'; //attributes are ignored
-				Page::echo($output, false, $this->tag);
+				else
+				{
+					Page::echo($output, true, $this->tag); //open paired tag
+					//container
+					foreach($this->container as $value)
+					{
+						if($value instanceof Element) $value->echo();
+						elseif(is_string($value)) Page::echo(str_replace(['<','>'], ['&lt;','&gt;'], $value)); //htmlspecialchars($value, ENT_NOQUOTES); //no &
+					}
+					//closing paired tag
+					$output = '</'.$this->tag.'>'; //attributes are ignored
+					Page::echo($output, false, $this->tag);
+				}
 			}
 		}
 	}
@@ -255,12 +271,9 @@ class Element implements \Countable, \IteratorAggregate //of HTML DOM (data obje
     public function __debugInfo(): array //var_dump($obj)
 	{
 		return array(
-			'Tag' => $this->tag,
-			'TagID' => spl_object_id($this), //'TagHash' => md5(spl_object_hash($this)),
-			'Parent' => isset($this->parent) ? $this->parent->tag : null,
-			'ParentID' => isset($this->parent) ? spl_object_id($this->parent) : null,
-			'Children' => count($this), //'Children' => $this->container ?: [],
-			'Attributes' => count($this->attrib), //'Attributes' => $this->attrib
+			'tag:id' => $this->tag . ':' . spl_object_id($this),
+			'parent:id' => isset($this->parent) ? $this->parent->tag . ':' . spl_object_id($this->parent) : null,
+			'children' => count($this), //'children' => $this->container ?: [],
 		);
     }
 
@@ -311,12 +324,13 @@ class Page extends Singleton
 
 	private static float $starttime = 0; //loading page start time
 	private static string $title = ''; //page title
-	private static array $links = []; //page links
+	private static array $links = []; //page elements in head
 
 	protected function __construct()
 	{
 		self::$starttime = microtime(true);
 		self::$html = new Element('html', true, lang: App::Env('APP_LANGUAGE')); //language declaration meant to assist search engines and browsers
+		
 	}
 
 	public static function Start(?string $title = null): void
@@ -332,7 +346,7 @@ class Page extends Singleton
 		meta(charset: strtolower(App::Env('APP_ENCODING')));
 		meta(name: 'title', content: Page::Title());
 		if(method_exists(__CLASS__, 'Metadata')) self::Metadata(true); //may contain links
-		foreach(self::$links as $link) lnk($link); //add links
+		self::$html->add(...self::$links); //add links
 		head(false);
 
 		//body
@@ -356,12 +370,17 @@ class Page extends Singleton
 
 	public static function Icon(string $href = 'favicon.ico', string $type = 'image/x-icon'): void
 	{
-		array_push(self::$links, ['rel' => 'icon', 'type' => $type, 'href' => $href]);
+		array_push(self::$links, new Element('link', ['rel' => 'icon', 'type' => $type, 'href' => $href]));
 	}
 
 	public static function Style(string $href = 'style.css', string $type = 'text/css'): void
 	{
-		array_push(self::$links, ['rel' => 'stylesheet', 'type' => $type, 'href' => $href]);
+		array_push(self::$links, new Element('link', ['rel' => 'stylesheet', 'type' => $type, 'href' => $href]));
+	}
+
+	public static function Script(string $src = 'style.css', string $type = 'text/javascript'): void
+	{
+		array_push(self::$links, new Element('script', ['type' => $type, 'src' => $src], false)); //`false` because `script` is not singleton
 	}
 
 	public static function Time(): float
@@ -378,9 +397,9 @@ class Page extends Singleton
 	//null - singular tag - void element - <$name />
 	//true - paired tag - only open element - <$name>
 	//false - paired tag - only close element - </$name> - attributes are ignored
-	public static function echo(string $data, ?bool $type = null, string $tag = ''): void
+	public static function echo(string $data, ?bool $type = null, string $tag = ''): void //output string
 	{
-		if(App::Env('APP_DEBUG'))
+		if(App::Env('APP_PRETTY_PRINT'))
 		{
 			static $prev_tag = '';
 
@@ -464,28 +483,27 @@ Page::Initialize();
 
 //text and comment
 function txt(string $data): void { Page::tag('', $data); } //text-only, not HTML tag (empty tag name is only text)
-function rem(string $data = ''): void { Page::tag('!', $data); } //text-only, not support any attributes
+function rem(string $data = ''): void { Page::tag('!', $data); } //text-only,  <!-- comment -->
 function comment(string $data = ''): void { Page::tag('!', $data); } //same as rem
 
-//html tag aliases
-function title(string $data): object { return Page::tag(__FUNCTION__, $data); } //must be text-only, required in HTML document, only once
-function script(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
-function noscript(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //can be used in both <head> and <body>. When used inside <head>, could only contain <link>, <style>, and <meta> elements.
-
-//head tags
-function base(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - specifies the base URL and/or target for all relative URLs
-function lnk(mixed ...$data): object { return Page::tag('link', ...$data); } //singular - defines the relationship between the current document and an external resource (style sheets or to add a favicon) (keyword link is used by php)
-function meta(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - metadata (information data) about an HTML document
-
+//main tags
 function html(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //root of an HTML document
 function head(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //container for metadata
-function style(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function body(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //contains all the contents of an HTML document
 function headr(mixed ...$data): object { return Page::tag('header', ...$data); } //represents a container for introductory content (keyword header is used by php)
 function nav(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //defines a major navigation links or menu
 function main(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //main content of the document
 function footer(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //defines a footer for a document or section
 function dialog(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //defines a dialog box or subwindow (popup dialogs and modals)
+
+//head tags
+function meta(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - metadata (information data) about an HTML document
+function title(string $data): object { return Page::tag(__FUNCTION__, $data); } //text-only, required in HTML document, only once
+function style(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function lnk(mixed ...$data): object { return Page::tag('link', ...$data); } //singular - defines the relationship between the current document and an external resource (style sheets or to add a favicon) (keyword link is used by php)
+function script(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
+function noscript(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //can be used in both <head> and <body>. When used inside <head>, could only contain <link>, <style>, and <meta> elements.
+function base(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - specifies the base URL and/or target for all relative URLs
 
 //blocks
 function section(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //document section
@@ -529,13 +547,13 @@ function q(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function i(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //alternate text, technical term, a phrase from another language (italic)
 function b(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //bold text without any extra importance (bold)
 function a(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //anchor
-function href(bool|string $content = '', ?string $href = null, mixed ...$data): object //a hyperlink
+function href(?string $href = null, mixed ...$data): object //a hyperlink
 {
-	return Page::tag('a', $content, ['href' => Request::GetFileName($href)], $data);
+	return Page::tag('a', ['href' => Request::GetFileName($href)], ...$data);
 }
-function click(bool|string $content = '', ?string $onclick = null, mixed ...$data): object //a onclick
+function click(?string $onclick = null, mixed ...$data): object //a onclick
 {
-	return Page::tag('a', $content, ['href' => 'javascript:;', 'onclick' => $onclick], $data); //run only onclick javascript
+	return Page::tag('a', ['href' => 'javascript:;', 'onclick' => $onclick], ...$data); //run only onclick javascript
 }
 
 //container

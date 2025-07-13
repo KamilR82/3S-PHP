@@ -17,8 +17,6 @@ define('MAIL_FROM_NAME', constant('APP_NAME'));
 
 class Mailer extends Singleton
 {
-	const charset = 'UTF-8';
-
 	protected function __construct()
 	{
 		//ini_set(sendmail_from, App::Env('MAIL_FROM_ADDRESS'));  //force the From Address to be used
@@ -29,7 +27,7 @@ class Mailer extends Singleton
 		$headers = array(
 			'MIME-Version' => '1.0',
 			'Date' => date('r (T)'),
-			'Content-type' => 'text/html; charset='.App::Env('APP_ENCODING', self::charset),
+			'Content-type' => 'text/html; charset='.App::Env('APP_ENCODING'),
 			'Content-Transfer-Encoding' => 'base64',
 			'X-Mailer' => 'PHP/'.phpversion(),
 			'From' => App::Env('MAIL_FROM_ADDRESS')

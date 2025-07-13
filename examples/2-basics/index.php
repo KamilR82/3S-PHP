@@ -13,13 +13,13 @@ h1(Page::Title()); //get page title
 
 //links in section
 section(class: 'links'); //open
-href();
 a('Link to nowhere.');
 a('Link to this file.', href: '');
 a('Link to other file.', href: 'home.php');
-href('Link to nowhere.');
-href('Link to this file.', '');
-href('Link to other file.', 'home.php');
+href('', 'Link to this file.');
+href('home.php', 'Link to other file.');
+click('alert("Hello! I am an alert box from `" + location.hostname + "`");', 'Link to JS'); //javascript
+click("alert('Hello! I am an alert box from `' + location.hostname + '`');", 'Link to JS'); //javascript (single and double quotes exchanged, look at html code) 
 section(false); //close
 
 br(); //create empty tag

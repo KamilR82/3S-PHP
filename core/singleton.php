@@ -230,10 +230,9 @@ class App extends Singleton
 		return false;
 	}
 
-	public static function Env(string $name, string|int|float|bool|null $default = null): string|int|float|bool|null
+	public static function Env(string $name): string|int|float|bool|null
 	{
-		return self::$config[$name] ?? $default ?: (defined($name) ? constant($name) : null); //1: from config file; 2: from function $default parameter; 3: from predefined constant
-		//return self::$config[$name] ?? (defined($name) ? constant($name) : $default); //1: from config file; 2: from predefined constant 3: from function $default parameter;
+		return self::$config[$name] ?? (defined($name) ? constant($name) : null); //1: from config file; 2: from predefined constant 3: not found (null);
 	}
 
 	public static function SetSession(?string $key = null, ?string $value = null): void
