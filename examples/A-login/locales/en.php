@@ -18,6 +18,9 @@ return array(
 	'days' => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], //weekdays
 	'months' => ['(whole year)', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], //months
 
+	//strings
+	'theme' => 'Light / Dark',
+
 	//forms
 	'form_token' => 'Form validation error! Token missing. It is necessary to enable cookies in your browser settings.',
 	'form_valid' => 'Form validation error! Token does not match. You can only save data from the page that was last opened.',
@@ -50,7 +53,7 @@ return array(
 	'settings' => 'Settings',
 	'logout' => 'Logout',
 
-	//strings
+	//footer
 	'footer' => 'Today %s &diams; Page loaded in %.03f seconds.',
 	'footer_today_format' => 'Y-m-d l',
 );

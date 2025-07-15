@@ -17,7 +17,10 @@ return array(
 	//lists
 	'days' => ['Nedeľa', 'Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota'],
 	'months' => ['(celý rok)', 'Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl', 'August', 'September', 'Október', 'November', 'December'],
-	
+
+	//strings
+	'theme' => 'Svetlá / Tmavá',
+
 	//forms
 	'form_token' => 'Platnosť formulára sa nepodarilo overiť! Je potrebné v nastaveniach prehliadača povoliť cookies.',
 	'form_valid' => 'Platnosť formulára vypršala! Údaje môžeš uložiť len zo stránky, ktorá bola otvorená ako posledná.',
@@ -50,7 +53,7 @@ return array(
 	'settings' => 'Nastavenia',
 	'logout' => 'Odhlásiť',
 
-	//strings
+	//footer
 	'footer' => 'Dnes je %s &diams; Stránka načítaná za %.03f sekundy.',
 	'footer_today_format' => 'j.n.Y l',
 );

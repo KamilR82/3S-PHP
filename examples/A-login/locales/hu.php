@@ -18,6 +18,9 @@ return array(
 	'days' => ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'],
 	'months' => ['(egész évben)', 'Január', 'Február', 'Március', 'Április', 'Május', 'Június', 'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'],
 
+	//strings
+	'theme' => 'Világos / Sötét',
+
 	//forms
 	//'form_token' => '',
 	//'form_valid' => '',
@@ -50,7 +53,7 @@ return array(
 	'settings' => 'Beállítások',
 	'logout' => 'Kijelentkezés',
 
-	//strings
+	//footer
 	'footer' => 'Ma %s &diams; Az oldal betöltése %.03f másodperc alatt történt.',
 	'footer_today_format' => 'Y-m-d l',
 );

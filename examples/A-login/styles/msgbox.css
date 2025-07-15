@@ -1,0 +1,35 @@
+div.msgbox
+{
+    padding: 20px 40px 20px 40px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    position: relative;
+}
+
+div.msgbox.alert { background: rgba(220,20,60, 0.8) url('../images/error.png') no-repeat 12px 50%; }
+div.msgbox.warning { background: rgba(255, 165, 0, 0.8) url('../images/warning.png') no-repeat 12px 50%; }
+div.msgbox.info { background: rgba(100,149,237, 0.8) url('../images/notice.png') no-repeat 12px 50%; }
+div.msgbox.success { background: rgba(60,179,113, 0.8) url('../images/success.png') no-repeat 12px 50%; }
+
+div.msgbox input {
+    appearance: none; -moz-appearance: none; -webkit-appearance: none;
+    position: absolute;
+    right: 15px;
+    color: var(--color-light);
+    font-weight: bold;
+    font-size: 22px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+div.msgbox input:before {
+    content: '\D7'; /* &times; */
+}
+
+div.msgbox input:hover {
+    filter: invert(100%);
+}
+
+div.msgbox:has(input:checked) {
+    display: none;
+}

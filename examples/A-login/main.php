@@ -26,7 +26,9 @@ trait PageTemplate
 		meta(name: 'viewport', content: 'width=device-width, initial-scale=1.0');
 
 		Page::Icon('images/favicon.ico');
-		Page::Style('main.css');
+		Page::Style('styles/main.css');
+		Page::Style('styles/msgbox.css');
+		Page::Script('scripts/theme.js');
 	}
 
 	private static function Begin(): void //body
@@ -35,8 +37,9 @@ trait PageTemplate
 		{
 			//header
 			headr(true);
-			input(['type'=>'checkbox', 'name'=>'burger', 'id'=>'burger', 'aria-label'=>'Toggle navigation']);
+			input(type: 'checkbox', name: 'burger', id: 'burger'); //Toggle navigation (burger menu for mobile devices)
 			h1(Page::Title()) . h5('You are logged in as '.User::GetFullName());
+			button(id: 'theme-toggle', title: _L('theme')); //Toggle theme
 			headr(false);
 
 			//navigation menu
@@ -64,7 +67,7 @@ trait PageTemplate
 			$menu->Load($side_bottom);
 
 			//content
-			div(['id' => 'content']); //scrollable
+			div(id: 'content'); //scrollable
 		}
 		main(true);
 	}

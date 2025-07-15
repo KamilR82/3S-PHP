@@ -18,6 +18,9 @@ return array(
 	'days' => ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
 	'months' => ['(ganzes Jahr)', 'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
 
+	//strings
+	'theme' => 'Hell / Dunkel',
+
 	//forms
 	//'form_token' => '',
 	//'form_valid' => '',
@@ -50,7 +53,7 @@ return array(
 	'settings' => 'Einstellungen',
 	'logout' => 'Abmelden',
 
-	//strings
+	//footer
 	'footer' => 'Heute %s &diams; Seite in %.03f Sekunden geladen.',
 	'footer_today_format' => 'j.n.Y l',
 );

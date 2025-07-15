@@ -21,7 +21,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 	private ?array $container = []; //inside data (text or child elements), null = singular
 
 //Interfaces
-	public function count(): int { return count($this->container); } //Countable
+	public function count(): int { return is_null($this->container) ? -1 : count($this->container); } //Countable
 	public function getIterator(): Traversable { return new ArrayIterator($this->container ?: []); } //IteratorAggregate (foreach)
 	//ArrayAccess (data[key])
     public function offsetExists($offset): bool { return boolval($this->first($offset)); } //isset() or empty()
@@ -47,7 +47,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 				if($val->parent) //exist in DOM -> move (same object can exist only once)
 				{
 					$key = array_search($val, $val->parent->container, true); //find in parent container
-					if($key !== false) unset($val->parent->container[$key]); //remove
+					if($key !== false) unset($val->parent->container[$key]); //remove from parent container
 					$val->parent = $this; //set new parent
 				}
 				array_push($this->container, $val); //add
@@ -265,22 +265,22 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function __toString(): string //echo($obj) / strval($obj)
 	{
-		return strval(spl_object_id($this)); //return ''; //used for concatenate tags with dots
+		return ''; //used for concatenate tags with dots
 	}
 
-    public function __debugInfo(): array //var_dump($obj)
+    public function __debugInfo(): array //var_dump($obj) / print_r($obj)
 	{
 		return array(
 			'tag:id' => $this->tag . ':' . spl_object_id($this),
 			'parent:id' => isset($this->parent) ? $this->parent->tag . ':' . spl_object_id($this->parent) : null,
-			'children' => count($this), //'children' => $this->container ?: [],
+			'active:id' => isset($this->active) ? $this->active->tag . ':' . spl_object_id($this->active) : null,
+			'children' => count($this), //singleton = -1
 		);
     }
 
 	public function __destruct()
 	{
-		unset($this->container); //destroy inside data
-		unset($this->attrib); //destroy attributes
+		unset($this->container); //destroy inside objects
 	}
 
 //html tag aliases
@@ -595,6 +595,9 @@ function optgroup(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$d
 function textarea(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); }
 function input(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular
 function radio(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular
+
+function meter(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //guage
+function progress(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //completion progress of a task
 
 //audio/video
 function img(string|array $src = [], string|array $alt = [], mixed ...$data): object //singular - image

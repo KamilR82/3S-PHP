@@ -10,6 +10,8 @@ div(class: 'popup');
 
 if(Request::IsPost()) User::Login(Request::GetParam('login'), Request::GetParam('password')); //try login
 
+div(button('false', id: 'theme-toggle', title: _L('theme'), width: 24, height: 24), id: 'corner');
+
 // login form:
 $form = Page::Form(Method::Post);
 $form->fieldset(true);
