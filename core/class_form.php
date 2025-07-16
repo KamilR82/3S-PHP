@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-enum Method: string //submitting form data method (NEVER use GET to send sensitive data!)
+enum Form_Method: string //submitting form data method (NEVER use GET to send sensitive data!)
 {
     case Get = 'get'; //Default. Appends the form-data to the URL in name/value pairs: URL?name=value&name=value
     case Post = 'post'; //Sends the form-data as an HTTP post transaction
@@ -13,7 +13,7 @@ class Form extends Element
 {
 	use Patterns;
 
-	public function __construct(Method $method = Method::Post, mixed ...$attrib) //NEVER use Method::Get to send sensitive data!
+	public function __construct(Form_Method $method = Form_Method::Post, mixed ...$attrib) //NEVER use Form_Method::Get to send sensitive data!
 	{
 		parent::__construct(strtolower(__CLASS__), false, $attrib);
 		$this->attrib['method'] = $method->value; //convert object to string

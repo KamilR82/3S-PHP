@@ -7,14 +7,14 @@ Page::Start('Form Example'); //set page title
 
 h3('Form 1');
 
-$form = Page::Form(Method::Post);
+$form = Page::Form(Form_Method::Post);
 $form->label('Text', 'text');
 $form->email('text', 'without fieldset', placeholder: 'background text', required: true, autofocus: true);
 $form->submit();
 
 h3('Form 2');
 
-$form = Page::Form(Method::Post);
+$form = Page::Form(Form_Method::Post);
 $form->autocomplete(false); //disable autocomplete
 $form->fieldset(true); //add first fieldset
 $form->legend('Form 2 - Fieldset 1');
@@ -36,7 +36,7 @@ $form->submit('Send'); //send button
 
 h3('Form 3');
 
-$form = Page::Form(Method::Post);
+$form = Page::Form(Form_Method::Post);
 
 $form->fieldset(true); //add first fieldset
 $form->legend('Form 3 - Fieldset 1');

@@ -19,9 +19,9 @@ class Menu extends Element
 				if($item->is('a') && isset($item->attrib['href']) && Request::IsFileName($item->attrib['href'])) $this->active()->class('active'); //set <li class="active">
 				$this->open($item); //object Element
 			}
-			else $this->open(new Element('!', 'Menu::load - Unsupported menu item ('.get_class($item).')')); //object unknown
+			else $this->open(new Element('!', 'Menu::load - Unsupported menu item data ('.get_class($item).')')); //unknown object
 		}
-		else $this->open(new Element('!', 'Menu::load - Unsupported menu item ('.gettype($item).')')); //unknown
+		else $this->open(new Element('!', 'Menu::load - Unsupported menu item type ('.gettype($item).')')); //unknown type
 	}
 
 	public function load(array $menu, bool $ordered = false): void

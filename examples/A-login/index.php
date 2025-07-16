@@ -8,12 +8,16 @@ Page::Start('Login Page'); //title
 
 div(class: 'popup');
 
+comment('messagebox holder');
+div(id: 'top');
 if(Request::IsPost()) User::Login(Request::GetParam('login'), Request::GetParam('password')); //try login
+div(false);
 
-div(button('false', id: 'theme-toggle', title: _L('theme'), width: 24, height: 24), id: 'corner');
+comment('corner theme button');
+div(button(id: 'theme-toggle', title: _L('theme'), width: 24, height: 24), id: 'corner');
 
-// login form:
-$form = Page::Form(Method::Post);
+comment('login form');
+$form = Page::Form(); //post is default
 $form->fieldset(true);
 $form->legend(_L('login_caption'));
 $form->label(_L('login'), 'login');
@@ -24,11 +28,12 @@ $form->submit(_L('login_button'));
 
 /*
 // same in classic style:
+comment('login form');
 form(method: 'post',  enctype: 'multipart/form-data');
 input(type: 'hidden', name: 'token', id: 'token', value: Request::GetToken());
 fieldset(true);
 legend(_L('login_caption'));
 label(_L('login'), for: 'login') . input(type: 'email', name: 'login', id: 'login', pattern: Form::pattern_email, required: true, autofocus: true);
 label(_L('password'), for: 'password') . input(type: 'password', name: 'password', id: 'password', pattern: Form::pattern_password, required: true);
-input(['type'=>'submit', 'name'=>'sent', 'id'=>'sent', 'value'=>_L('login_button')]);
+input(type: 'submit', name: 'submit', id: 'submit', value: _L('login_button'));
 */

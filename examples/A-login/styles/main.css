@@ -55,6 +55,12 @@ div#corner {
 	right: 0;
 }
 
+div#top {
+	position: fixed;
+	top: 0;
+	width: 100%;
+}
+
 header {
     display: flex;
     align-items: center;

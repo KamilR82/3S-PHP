@@ -8,14 +8,15 @@ App::Protect(__FILE__);
 
 //DEFAULT CONSTANTS
 define('APP_PRETTY_PRINT', true); //pretty output html code
+//define('HARD_DEBUG_MODE', true); //output tags add,rem,mov,del
 
 class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element of HTML DOM (data object model)
 {
+	private string $tag = ''; //name ('' = only text, ! = html comment)
 	private object $active; //active element for add child (pointer)
 	private ?object $parent = null; //parent element or none
 
-	private string $tag = ''; //name ('' = text content, ! = html comment)
-	private ?bool $flag = null; //false = abstract close element / true = keep open for add child elements (return this, no parent)
+	private ?bool $flag = null; //false = abstract close element / true = keep open for add child elements
 
 	protected array $attrib = []; //attributes
 	private ?array $container = []; //inside data (text or child elements), null = singular
@@ -33,8 +34,8 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function __construct(string $tag, mixed ...$data)
 	{
-		$this->active = $this;
-		$this->tag = $tag;
+		$this->tag = $tag; //tag name
+		$this->active = $this; //activate self
 
 		foreach($data as $key => $val) //parse data
 		{
@@ -44,10 +45,15 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 			elseif(is_string($val)) array_push($this->container, $val); //pure text
 			elseif($val instanceof Element) //child element
 			{
-				if($val->parent) //exist in DOM -> move (same object can exist only once)
+				if($val->parent) //child exists in DOM -> move (same object can exist only once)
 				{
+					if(defined('HARD_DEBUG_MODE')) echo('<!-- = '.$val.' = '.$val->parent.' <-> '.$this.' -->'.PHP_EOL); //DEBUG - Move Tag
+
 					$key = array_search($val, $val->parent->container, true); //find in parent container
 					if($key !== false) unset($val->parent->container[$key]); //remove from parent container
+
+					//change parents
+					$this->active = $val->parent; //set old parent to temporary
 					$val->parent = $this; //set new parent
 				}
 				array_push($this->container, $val); //add
@@ -59,16 +65,6 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 		/*svg*/ 'path', 'rect', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'image', 'stop', 'set', 'animate', 'animateMotion', 'animateTransform'], true) !== false) $this->container = null;
 	}
 
-	public function tag(): string
-	{
-		return $this->tag;
-	}
-
-	public function is(string $tag): bool
-	{
-		return strcasecmp($this->tag, $tag) === 0;
-	}
-
 	public function add(string|object ...$objects): object //add text(s) or element object(s) to active element node
 	{
 		foreach($objects as $obj)
@@ -77,16 +73,8 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 			if(is_string($obj)) array_push($this->active->container, $obj); //add text
 			elseif($obj instanceof Element)
 			{
-				if($obj->flag === false && empty($obj->container) && empty($obj->attrib))
-				{
-					//echo('<!-- / '.$this->active->tag.' <- '.$obj->tag.' -->'.PHP_EOL); //DEBUG - Close Tag
-					$this->close($obj->tag); //try to close
-				}
-				else //if($obj->flag === true || !empty($obj->container) || !empty($obj->attrib)) //same
-				{
-					//echo('<!-- + '.$this->active->tag.' -> '.$obj->tag.' -->'.PHP_EOL); //DEBUG - Open Tag
-					$this->open($obj);
-				}
+				if($obj->flag === false && empty($obj->container) && empty($obj->attrib)) $this->close($obj->tag); //try to close
+				else $this->open($obj); //if($obj->flag === true || !empty($obj->container) || !empty($obj->attrib)) //open
 			}
 			else throw new \Exception('Element::add - Unsupported object type. Expected object `Element` or its child.');
 		}
@@ -95,9 +83,19 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function open(object $obj): object //add ONE child element OBJECT
 	{
+		//prevent possible infinite loop when a tag remains open in another tag inline: div(button(id: 'btn_still_active')); 
+		if($this->active->parent === $obj) // throw new \Exception('Element::open - Child === Parent.');
+		{
+			$this->activate($obj->active); //set caller active from temporaty 
+			$obj->active = $obj; //set temporary back to self active
+		}
+
+		if(defined('HARD_DEBUG_MODE')) echo('<!-- + '.$this->active.' -> '.$obj.' -->'.PHP_EOL); //DEBUG - Open Tag
+		if(is_null($this->active->container)) throw new \Exception('Element::open - Parent is singular. Expected paired tag.');
+
 		if(App::Env('APP_DEBUG')) //add tag attribute `data-tag-caller` and `data-tag-id`
 		{
-			$backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS); //ignore arguments
+			$backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS); //arguments not needed
 			$last = end($backtrace); //array last item
 			if(isset($last['file'])) $obj->attrib(['data-tag-caller' => basename($last['file']).':'.($last['line'])]); //__destruct has no file & line
 			else $obj->attrib(['data-tag-caller' => ($last['class']??'') . ($last['type']??'') . $last['function']]); //class & function
@@ -116,6 +114,8 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function close(string $tag = ''): object //close child 
 	{
+		if(defined('HARD_DEBUG_MODE')) echo('<!-- / '.$this->active.' <- `'.$tag.'` -->'.PHP_EOL); //DEBUG - Close Tag
+
 		$parent = $this->active->parent($tag); //try to close
 		if($parent) $this->active = $parent; //parent tag found
 		else array_push($this->active->container, new Element('!', 'Error: Tag not found! (`'.$tag.'` not open)')); //error as html comment
@@ -124,11 +124,17 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function parent(string $tag = ''): ?object //get parent element (by name)
 	{
-		if(!is_null($this->parent) && !empty($tag)) //want exact tag
+		if($this->parent && !empty($tag)) //want exact tag
 		{
-			if(strcasecmp($tag, $this->tag) != 0) return $this->parent->parent($tag); //recursion
+			if(!$this->is($tag)) return $this->parent->parent($tag); //recursion
+			//if(strcasecmp($tag, $this->tag) != 0) return $this->parent->parent($tag); //recursion
 		}
 		return $this->parent;
+	}
+
+	public function activate(?object $obj = null): object //reset active element to self (or other)
+	{
+		return $this->active = $obj ?: $this;
 	}
 
 	public function active(): object //get
@@ -136,24 +142,23 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 		return $this->active;
 	}
 
-	public function activate(): object //reset active element to self
+	public function tag(): string //get
 	{
-		return $this->active = $this; //set self to active
+		return $this->tag;
+	}
+
+	public function is(?string $tag, ?string $id = null): bool //compare tag name and id (null,null = retrun true)
+	{
+		if((is_null($tag) || (strcasecmp($this->tag, $tag) === 0)) &&
+			(is_null($id) || (isset($this->attrib['id']) && strcasecmp($this->attrib['id'], $id) === 0))) return true;
+		return false;
 	}
 
 	public function first(?string $tag = null, ?string $id = null): ?object //get child (by name and id)
 	{
 		foreach($this->container as $obj)
 		{
-			if($obj instanceof Element)
-			{
-				if(is_null($tag)) return $obj; //first object
-				elseif(strcasecmp($tag, $obj->tag) == 0)
-				{
-					if(is_null($id)) return $obj; //first object with tag
-					elseif(isset($obj->attrib['id']) && strcasecmp($id, $obj->attrib['id']) == 0) return $obj; //first object with tag and id
-				}
-			}
+			if($obj instanceof Element && $obj->is($tag, $id)) return $obj;
 		}
 		return null;
 	}
@@ -162,20 +167,17 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 	{
 		foreach($this->container as $key => $obj)
 		{
-			if($obj instanceof Element)
+			if($obj instanceof Element && $obj->is($tag, $id))
 			{
-				if(strcasecmp($tag, $obj->tag) == 0)
-				{
-					if(is_null($id)) unset($this->container[$key]);
-					elseif(isset($obj->attrib['id']) && strcasecmp($id, $obj->attrib['id']) == 0) unset($this->container[$key]);
-				}
+				if(defined('HARD_DEBUG_MODE')) echo('<!-- - '.$this.' <- '.$obj.' -->'.PHP_EOL); //DEBUG - remove tag
+				unset($this->container[$key]);
 			}
 		}
 	}
 
 	public function clear(): void
 	{
-		$this->container = []; //destroy all children objects and text inside element
+		if(!is_null($this->container)) $this->container = []; //if not singular - clear content (destroy all objects and texts inside element)
 	}
 
 	public function class(null|string|array $add = null, null|string|array $rem = null): ?array
@@ -253,7 +255,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 					foreach($this->container as $value)
 					{
 						if($value instanceof Element) $value->echo();
-						elseif(is_string($value)) Page::echo(str_replace(['<','>'], ['&lt;','&gt;'], $value)); //htmlspecialchars($value, ENT_NOQUOTES); //no &
+						elseif(is_string($value)) Page::echo(str_replace(['<','>'], ['&lt;','&gt;'], $value)); //do not translate `&`
 					}
 					//closing paired tag
 					$output = '</'.$this->tag.'>'; //attributes are ignored
@@ -265,7 +267,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function __toString(): string //echo($obj) / strval($obj)
 	{
-		return ''; //used for concatenate tags with dots
+		return $this->tag . ':' . spl_object_id($this);
 	}
 
     public function __debugInfo(): array //var_dump($obj) / print_r($obj)
@@ -274,7 +276,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 			'tag:id' => $this->tag . ':' . spl_object_id($this),
 			'parent:id' => isset($this->parent) ? $this->parent->tag . ':' . spl_object_id($this->parent) : null,
 			'active:id' => isset($this->active) ? $this->active->tag . ':' . spl_object_id($this->active) : null,
-			'children' => count($this), //singleton = -1
+			'children' => count($this), //singular = -1
 		);
     }
 
@@ -345,7 +347,7 @@ class Page extends Singleton
 		title(Page::Title()); //required only once in every HTML document (must be text-only)
 		meta(charset: strtolower(App::Env('APP_ENCODING')));
 		meta(name: 'title', content: Page::Title());
-		if(method_exists(__CLASS__, 'Metadata')) self::Metadata(true); //may contain links
+		if(method_exists(__CLASS__, 'Metadata')) self::Metadata(true);
 		self::$html->add(...self::$links); //add links
 		head(false);
 
@@ -464,18 +466,15 @@ class Page extends Singleton
 
 	public function __destruct()
 	{
-		//finish html
-		if(method_exists(__CLASS__, 'Finish')) self::Finish();
+		if(method_exists(__CLASS__, 'Finish')) self::Finish(); //finish html
 
 		//output
 		echo '<!DOCTYPE html>'.PHP_EOL; //HTML 5 declaration
 		echo '<!-- Created with '.App::Env('3S_NAME').' -->'.PHP_EOL; //about
 		if(App::Env('APP_DEBUG')) echo '<!-- Debug mode is enabled! (Disabled debug mode shortens the execution time.) -->'.PHP_EOL;
 		echo sprintf('<!-- Page loaded in %.04f seconds. -->', self::Time()).PHP_EOL;
-		//all html tags
-		self::$html->echo(); //DEBUG: print_r(self::$html);
-		//last info
-		echo PHP_EOL.sprintf('<!-- Page done in %.04f seconds. -->', self::Time());
+		self::$html->echo(); //whole DOM tree (all html tags)
+		echo PHP_EOL.sprintf('<!-- Page done in %.04f seconds. -->', self::Time()); //last info
 	}
 }
 
