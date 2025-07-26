@@ -23,14 +23,14 @@ const themeToggle = () => {
 	themeChanged();
 }
 
-window.onload = () => {
+document.addEventListener('DOMContentLoaded', () => {
 	theme = themeGet();
 	themeChanged();
 
 	document
 		.querySelector('#theme-toggle')
 		.addEventListener('click', themeToggle)
-}
+});
 
 window
 	.matchMedia('(prefers-color-scheme: dark)')

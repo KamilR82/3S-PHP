@@ -127,7 +127,6 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 		if($this->parent && !empty($tag)) //want exact tag
 		{
 			if(!$this->is($tag)) return $this->parent->parent($tag); //recursion
-			//if(strcasecmp($tag, $this->tag) != 0) return $this->parent->parent($tag); //recursion
 		}
 		return $this->parent;
 	}
@@ -202,6 +201,21 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 	{
 		if(is_null($attrib)) $this->attrib = [];
 		else $this->attrib = array_merge($this->attrib, $attrib);
+	}
+
+	public function sortby(string $attrib_name, bool $asc = true): void //sort children (case insensitive natural order)
+	{
+		usort($this->container, function($a, $b) use ($attrib_name, $asc) 
+		{
+			if($a instanceof Element && $b instanceof Element)
+			{
+				if(isset($a->attrib[$attrib_name]) && isset($b->attrib[$attrib_name]))
+				{
+					return $asc ? strnatcasecmp($a->attrib[$attrib_name], $b->attrib[$attrib_name]) : strnatcasecmp($b->attrib[$attrib_name], $a->attrib[$attrib_name]);
+				}
+			}
+			return 0; //equal or incomparable
+		});
 	}
 
 //output
@@ -295,21 +309,21 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	//custom tag aliases
 
-	function href(bool|string $content = true, ?string $href = null, mixed ...$data): object //a hyperlink
+	function href(?string $href = null, mixed ...$data): object //a hyperlink
 	{
-		return $this->active->add(new Element('a', $content, ['href' => Request::GetFileName($href)], $data));
+		return $this->active->add(new Element('a', ['href' => Request::GetFileName($href)], ...$data));
 	}
 
-	function click(bool|string $content = true, ?string $onclick = null, mixed ...$data): object //a onclick
+	function click(?string $onclick = null, mixed ...$data): object //a onclick
 	{
-		return $this->active->add(new Element('a', $content, ['href' => 'javascript:;', 'onclick' => $onclick], $data)); //run only onclick javascript
+		return $this->active->add(new Element('a', ['href' => 'javascript:;', 'onclick' => $onclick], ...$data)); //run only onclick javascript
 	}
 
 	function img(string|array $src, string|array $alt = [], mixed ...$data): object //singular - image
 	{
 		if(is_string($src)) $src = array('src' => $src);
 		if(is_string($alt)) $alt = array('alt' => $alt);
-		return $this->active->add(new Element(__FUNCTION__, $src, $alt, $data));
+		return $this->active->add(new Element(__FUNCTION__, $src, $alt, ...$data));
 	}
 }
 
@@ -482,6 +496,7 @@ Page::Initialize();
 
 //text and comment
 function txt(string $data): void { Page::tag('', $data); } //text-only, not HTML tag (empty tag name is only text)
+function text(string $data): void { Page::tag('', $data); } //text-only, not HTML tag (empty tag name is only text)
 function rem(string $data = ''): void { Page::tag('!', $data); } //text-only,  <!-- comment -->
 function comment(string $data = ''): void { Page::tag('!', $data); } //same as rem
 
@@ -603,7 +618,7 @@ function img(string|array $src = [], string|array $alt = [], mixed ...$data): ob
 {
 	if(is_string($src)) $src = array('src' => $src);
 	if(is_string($alt)) $alt = array('alt' => $alt);
-	return Page::tag(__FUNCTION__, $src, $alt, $data);
+	return Page::tag(__FUNCTION__, $src, $alt, ...$data);
 }
 function map(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //img usemap="#name"
 function area(mixed ...$data): object { return Page::tag(__FUNCTION__, ...$data); } //singular - defines an area inside an image map

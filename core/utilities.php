@@ -163,7 +163,7 @@ class Num extends Singleton
 		if(Any::IsEmpty($amount)) $amount = '&mdash;';
 		elseif(is_numeric($amount))
 		{
-			$amount = floatval($num);
+			$amount = floatval($amount);
 			if($dash && $amount == 0) $amount = '&mdash;';
 			else
 			{
@@ -340,5 +340,23 @@ class DT extends Singleton //Date & Time
 		}
 		if($negative) $output = '-'.$output; //dont use &minus;
 		return $output;
+	}
+}
+
+class FS extends Singleton //File System
+{
+	public static function IsSubPath(string $parentPath, string $subPath, bool $equal = false): bool
+	{
+		$parentPath = realpath($parentPath);
+		$subPath = realpath($subPath);
+
+		if($parentPath === false || $subPath === false) return false;
+
+		$parentPath = rtrim($parentPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+		$subPath = rtrim($subPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+
+		if($equal === false && $parentPath === $subPath) return false;
+
+		return str_starts_with($subPath, $parentPath);
 	}
 }

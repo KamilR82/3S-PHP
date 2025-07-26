@@ -5,6 +5,8 @@ define('SIZE', 250); //long side max px
 //define('SAVE', true); //save thumbnail
 
 $file = $_GET['path'];
+$viewport_width = intval($_GET['w'] ?? SIZE);
+$viewport_height = intval($_GET['h'] ?? SIZE);
 
 if(file_exists($file))
 {
@@ -47,23 +49,8 @@ if(file_exists($file))
 		//edit image (resize + rotate)
 		if($image_orig !== false)
 		{
-			//resize
-			if(max($width, $height) > SIZE)
-			{
-				$new_width = SIZE;
-				$new_height = -1;
-				if($width > $height)
-				{
-					$new_height  = ($height / $width) * SIZE;
-				}
-				else
-				{
-					$new_width    = ($width / $height) * SIZE;
-					$new_height   = SIZE;
-				}
-				$image_orig = imagescale($image_orig, intval($new_width), intval($new_height));
-			}
-			//rotate
+			//get rotation
+			$rotate = 0;
 			if(extension_loaded('exif') && ($exif = exif_read_data($file, 'IFD0')) !== false)
 			{
 				$rotate = match($exif['Orientation'])
@@ -73,8 +60,29 @@ if(file_exists($file))
 					8 => 90, //rotate left
 					default => 0,
 				};
-				if($rotate !== 0) $image_orig = imagerotate($image_orig, $rotate, 0);
 			}
+			$sideways = abs($rotate) == 90 ? true : false;
+			//calc aspect ratio
+			$screenAR = $viewport_width / $viewport_height;
+			$imageAR = $sideways ? $height / $width : $width / $height;
+			//resize
+			if($imageAR > $screenAR) // Obrázok je širší v pomere ako obrazovka, obmedzíme ho šírkou obrazovky
+			{
+				$width = $viewport_width;
+				$height = round($viewport_width / $imageAR);
+			}
+			else // Obrázok je vyšší v pomere ako obrazovka, obmedzíme ho výškou obrazovky
+			{
+				$height = $viewport_height;
+				$width = $viewport_height * $imageAR;
+			}
+			//scale
+			if($sideways)
+				$image_orig = imagescale($image_orig, intval($height), intval($width));
+			else
+				$image_orig = imagescale($image_orig, intval($width), intval($height));
+			//rotate
+			if($rotate !== 0) $image_orig = imagerotate($image_orig, $rotate, 0);
 			//output
 			if(defined('SAVE')) //to file
 			{

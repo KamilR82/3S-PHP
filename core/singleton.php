@@ -289,7 +289,7 @@ class App extends Singleton
 	public static function Autoload(string $class): void
 	{
 		$filename = __DIR__ . DIRECTORY_SEPARATOR . strtolower(match($class) {
-			'Any', 'Num', 'Str', 'Arr', 'DT' => 'utilities', 
+			'Any', 'Num', 'Str', 'Arr', 'DT', 'FS' => 'utilities', 
 			'Request', 'Req' => 'request', 
 			'Page', 'Queue' => 'hypertext',
 			'Language', 'Lang' => 'language', 

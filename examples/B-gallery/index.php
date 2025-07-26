@@ -21,15 +21,13 @@ trait PageTemplate
 		Page::Icon('images/pics.ico');
 		Page::Style('styles/main.css');
 		Page::Script('scripts/theme.js');
+		Page::Script('scripts/timer.js');
 		Page::Script('scripts/thumbnail.js');
 	}
 
 	private static function Begin(): void //body
 	{
-		//header
 		headr(h1(Page::Title()), button(id: 'theme-toggle'));
-
-		//content
 		main(true);
 	}
 
@@ -46,19 +44,19 @@ $gallery = Request::GetParam('path') ?: GALLERY;
 
 if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 {
-	//h4($gallery.DIRECTORY_SEPARATOR);
-
-	$folders = section(false, id: 'folders'); //prerobit vracanie ak dam nieco do vnutra !!!
+	h4($gallery.DIRECTORY_SEPARATOR);
+	hr();
+	$folders = section(false, id: 'folders');
 	hr();
 	$pictures = section(false, id: 'pictures');
 
 	if(FS::IsSubPath(GALLERY, $gallery))
 	{
 		$back = dirname($gallery);
-		$folders->href(Request::Modify(['path' => $back]), figure(img('images/back.ico'), figcaption('BACK')), ['data-time' => 0]);
+		$folders->href(Request::Modify(['path' => $back]), figure(img('images/back.ico'), figcaption('BACK')), ['data-name' => '', 'data-time' => 0]);
 	}
 
-	if(($handle = opendir($gallery)) !== false)
+	if(($handle = @opendir($gallery)) !== false)
 	{
 		while(($entry = readdir($handle)) !== false)
 		{
@@ -67,10 +65,10 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 
 			if(is_dir($path)) //folders
 			{
-				if(($entry !== '.') && ($entry !== '..'))
+				if(($entry !== '.') && ($entry !== '..') && ($entry[0] !== '#') && ($entry[0] !== '@'))
 				{
 					$default = 'images/pics.ico'; //folder icon
-					$folders->href(Request::Modify(['path' => $path]), figure(img($default), figcaption($entry)), ['data-time' => $time]);
+					$folders->href(Request::Modify(['path' => $path]), figure(img($default), figcaption($entry)), ['data-name' => $entry, 'data-time' => $time]);
 				}
 			}
 			else //files
@@ -92,19 +90,27 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 		}
 		closedir($handle);
 
-		//sort
+		//sort dirs by name (case insensitive natural order)
+		$folders->sortby('data-name');
 	}
+	else h1('Failed to open directory!'); //Permission denied?
 
 	comment('modal');
 	div(id: 'modal');
 	div(id: 'buttons');
-	click('imgFirst();', img('images/rewind.ico'));
-	click('imgPrev();', img('images/prev.ico'));
-	click('closeModal();', img('images/close.ico'));
-	click('imgNext();', img('images/next.ico'));
-	click('imgLast();', img('images/forward.ico'));
+	img('images/play.ico', id: 'slideshow');
+	txt('&nbsp;');
+	img('images/rewind.ico', id: 'rewind');
+	img('images/prev.ico', id: 'prev');
+	strong(false, id: 'counter');
+	img('images/next.ico', id: 'next');
+	img('images/forward.ico', id: 'forward');
+	txt('&nbsp;');
+	img('images/close.ico', id: 'close');
+	div(false); //buttons
+	img(id: 'zoomed');
+	progress(id: 'progress', max: 100, value: 0);
 	div(false);
-	img(id: 'slideshow');
-	div(false);
+
 }
 else h1('Gallery not found!');
