@@ -60,6 +60,8 @@ let modal;
 let modalImg;
 let actualBtn;
 
+let startX, startY;
+
 document.addEventListener('DOMContentLoaded', () => {
 	modal = document.getElementById('modal');
 	modalImg = document.getElementById('zoomed');
@@ -92,6 +94,24 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		});
 	}
+
+	//swipe
+	modalImg.addEventListener('touchstart', (e) => {
+		startX = e.touches[0].clientX;
+		startY = e.touches[0].clientY;
+	});
+	modalImg.addEventListener('touchmove', (e) => {
+		e.preventDefault();//prevent default scrolling behavior
+	});
+	modalImg.addEventListener('touchend', (e) => {
+		const diffX = e.changedTouches[0].clientX - startX;
+		const diffY = e.changedTouches[0].clientY - startY;
+		const threshold = 50; // minimum distance in pixels for a swipe to be recognized
+		if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) { //horizontal swipe
+			if (diffX > 0) imgPrev(); //swipe right (go left)
+			else imgNext(); //swipe left (go right)
+		}
+	});
 });
 
 document.addEventListener('keydown', function (event) {
@@ -180,7 +200,7 @@ function imgChange(element) {
 	if (counter) counter.textContent = imgIndex + ' / ' + imgCount;
 	//buttons on/off
 	if (imgIndex === imgCount) timer.stop(); //end of slideshow
-	else if(slideshowState) timer.start(); //resume slideshow
+	else if (slideshowState) timer.start(); //resume slideshow
 	const btnPlay = document.getElementById('slideshow');
 	const btnFirst = document.getElementById('rewind');
 	const btnPrev = document.getElementById('prev');

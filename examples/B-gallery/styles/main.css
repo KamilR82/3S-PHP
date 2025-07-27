@@ -96,7 +96,13 @@ hr {
 	margin: 0.5em;
 }
 
-section {
+section#folders {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+	grid-template-rows: repeat(auto-fit, minmax(100px, 1fr));
+}
+
+section#pictures {
     display: flex;
 	flex-wrap: wrap;
     align-items: center; /* vertical - center to row */
@@ -123,7 +129,10 @@ figure {
 }
 
 figcaption {
+    line-height: 1.2;
     text-align: center; /* center text if smaller than image */
+    word-break: break-word; /* break long words */
+	text-overflow: ellipsis;
 }
 
 section img {
@@ -158,8 +167,8 @@ div#modal div#buttons {
 	display: flex; /* Makes the container a flex container */
 	align-items: center; /* Vertically centers direct children along the cross-axis */
 	justify-content: center; /* Optionally horizontally centers items along the main-axis (if you want the group centered) */
-	gap: 1em;
-	margin: 1.5em;
+	gap: 0.6em;
+	margin: 1.2em;
 }
 
 div#modal div#buttons img {
@@ -178,8 +187,8 @@ div#modal div#buttons img:not(.grayed):hover {
 }
 
 div#modal img#zoomed {
-	max-width: 80vw;
-	max-height: 80vh;
+	max-width: 85vw;
+	max-height: 85vh;
 	object-fit: contain;
     margin: 0 auto; /* center */
 
@@ -190,4 +199,12 @@ div#modal img#zoomed {
 
 div#modal progress#progress {
 	display: none;
+}
+
+/* mobile */
+@media only screen and (orientation: portrait) and (max-width: 600px) {
+    #prev,
+	#next {
+        display: none;
+    }
 }

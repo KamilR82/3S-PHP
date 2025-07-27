@@ -61,7 +61,8 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 		while(($entry = readdir($handle)) !== false)
 		{
 			$path = $gallery.'/'.$entry; //path
-			$time = filemtime($path); //modification time
+			$time = @filemtime($path); //modification time
+			if($time === false) h2('Failed to read directory!');
 
 			if(is_dir($path)) //folders
 			{
