@@ -66,12 +66,12 @@ if(file_exists($file))
 			$screenAR = $viewport_width / $viewport_height;
 			$imageAR = $sideways ? $height / $width : $width / $height;
 			//resize
-			if($imageAR > $screenAR) // Obrázok je širší v pomere ako obrazovka, obmedzíme ho šírkou obrazovky
+			if($imageAR > $screenAR) // The image is wider in proportion than the screen, so we will limit it to the screen's width.
 			{
 				$width = $viewport_width;
 				$height = round($viewport_width / $imageAR);
 			}
-			else // Obrázok je vyšší v pomere ako obrazovka, obmedzíme ho výškou obrazovky
+			else // The image is taller in proportion than the screen, so we will limit it to the screen's height.
 			{
 				$height = $viewport_height;
 				$width = $viewport_height * $imageAR;

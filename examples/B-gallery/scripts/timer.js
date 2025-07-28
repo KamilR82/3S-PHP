@@ -1,11 +1,12 @@
 'use strict';
 
 class Timer {
-	static #STEP = 200; //ms
+	static #STEP = 100; //ms
 
 	constructor(seconds = 60) {
 		this.totalDuration = seconds * 1000;
 		this.timeRemaining = this.totalDuration;
+		this.intervalStep = Timer.#STEP;
 		this.intervalId = null; //setInterval ID (null = not running)
 
 		//event callback functions
@@ -14,6 +15,15 @@ class Timer {
 		this.onStartCallback = () => { };
 		this.onPauseCallback = () => { };
 		this.onStopCallback = () => { };
+	}
+
+	setStep(ms) {
+		if (typeof ms !== 'number' || ms < 10) {
+			console.error('The timer step must be a positive number.');
+			return;
+		}
+
+		this.intervalStep = ms;
 	}
 
 	setDuration(seconds) {
@@ -27,8 +37,7 @@ class Timer {
 	}
 
 	getProgressPercentage() {
-		if (this.totalDuration === 0) return 0;
-		if (this.timeRemaining <= 0) return 0;
+		if (this.totalDuration === 0 || this.timeRemaining <= 0) return 0;
 		return ((this.totalDuration - this.timeRemaining) / this.totalDuration) * 100;
 	}
 
@@ -39,16 +48,16 @@ class Timer {
 	}
 
 	start() {
-		if (this.intervalId) return;
+		if (this.intervalId) return; //running
 		this.onStartCallback();
 		this.intervalId = setInterval(() => {
-			this.timeRemaining -= Timer.#STEP;
+			this.timeRemaining -= this.intervalStep;
 			if (this.timeRemaining <= 0) {
 				this.onCompleteCallback(); //complete callback
 				this.reset();
 			}
 			else this.onTickCallback(Math.floor(this.getProgressPercentage())); //tick callback
-		}, Timer.#STEP);
+		}, this.intervalStep);
 	}
 
 	pause() {

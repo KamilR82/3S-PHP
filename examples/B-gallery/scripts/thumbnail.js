@@ -32,22 +32,17 @@ window.onload = async () => {
 
 	//loop
 	for (const btn of btns) {
-		try {
-			const prevBorder = btn.style.border;
-			btn.style.border = '1px solid green';
-			await wait(50); //wait
-			const src = btn.getAttribute('data-src');
-			const img = btn.getElementsByTagName('img')[0];
-			if (!src || !img) continue;
-			img.setAttribute('loading', 'lazy');
-			const loadedImage = await loadImg('thumbnail.php?path=' + src); //try to load image to buffer 
-			if (loadedImage) img.src = loadedImage.src; //copy from buffer
-			await wait(50); //wait
-			btn.style.border = prevBorder;
-		} catch (error) {
-			btn.style.border = '1px solid red';
-			console.error(error.message);
+		const prevColor = btn.style.borderColor;
+		btn.style.borderColor = 'green';
+		const src = btn.getAttribute('data-src');
+		const img = btn.getElementsByTagName('img')[0];
+		if (!src || !img) {
+			btn.style.borderColor = 'red';
+			continue;
 		}
+		img.src = 'thumbnail.php?path=' + src;
+		await wait(250); //wait
+		btn.style.borderColor = prevColor;
 	}
 
 	const endDate = new Date();
@@ -67,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	modalImg = document.getElementById('zoomed');
 
 	//buttons on modal
-	const buttonsDiv = document.getElementById('buttons');
+	const buttonsDiv = modal.querySelector('#buttons'); //document.getElementById('buttons'); //same
 	if (buttonsDiv) {
 		buttonsDiv.addEventListener('click', function (event) {
 			if (event.target.tagName === 'IMG' && !event.target.classList.contains('grayed')) {
@@ -177,7 +172,6 @@ function imgChange(element) {
 	if (slideshowState) timer.pause();
 	//try to load image
 	if (element) {
-		modalImg.src = '';
 		actualBtn = element;
 		const src = actualBtn.getAttribute('data-src');
 		if (src) {

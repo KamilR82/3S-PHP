@@ -125,18 +125,19 @@ section button:hover {
 }
 
 figure {
-    text-align: center; /* center image if smaller than text */
+	text-align: center; /* center image if smaller than text */
 }
 
 figcaption {
-    line-height: 1.2;
     text-align: center; /* center text if smaller than image */
     word-break: break-word; /* break long words */
 	text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 section img {
 	width: auto; /* aspect ratio (width based on height) */
+	max-width: 100%; /* ensures image doesn't overflow its container */
 }
 
 section#folders img {
@@ -145,6 +146,20 @@ section#folders img {
 
 section#pictures img {
 	height: 128px;
+	/* bg image */
+	min-width: 96px;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: 70%;
+}
+.jpeg {
+	background-image: url('../images/jpeg.ico');
+}
+.png {
+	background-image: url('../images/png.ico');
+}
+.bmp {
+	background-image: url('../images/bmp.ico');
 }
 
 /* modal */

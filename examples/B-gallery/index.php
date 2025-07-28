@@ -1,6 +1,7 @@
 <?php declare(strict_types = 1);
 
 define('GALLERY', 'gallery');
+define('GIF1X1', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='); //valid 1x1 pixel GIF
 
 define('CONFIG_FILE', './../config.php'); //load config file (supported types .ini .env .php)
 require_once($_SERVER['DOCUMENT_ROOT'].'/core/singleton.php'); //initialize framework
@@ -53,7 +54,7 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 	if(FS::IsSubPath(GALLERY, $gallery))
 	{
 		$back = dirname($gallery);
-		$folders->href(Request::Modify(['path' => $back]), figure(img('images/back.ico'), figcaption('BACK')), ['data-name' => '', 'data-time' => 0]);
+		$folders->href(Request::Modify(['path' => $back]), figure(img('images/back.ico'), figcaption('BACK')), ['data-name' => '']);
 	}
 
 	if(($handle = @opendir($gallery)) !== false)
@@ -61,15 +62,11 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 		while(($entry = readdir($handle)) !== false)
 		{
 			$path = $gallery.'/'.$entry; //path
-			$time = @filemtime($path); //modification time
-			if($time === false) h2('Failed to read directory!');
-
 			if(is_dir($path)) //folders
 			{
 				if(($entry !== '.') && ($entry !== '..') && ($entry[0] !== '#') && ($entry[0] !== '@'))
 				{
-					$default = 'images/pics.ico'; //folder icon
-					$folders->href(Request::Modify(['path' => $path]), figure(img($default), figcaption($entry)), ['data-name' => $entry, 'data-time' => $time]);
+					$folders->href(Request::Modify(['path' => $path]), figure(img('images/pics.ico', alt: $entry), figcaption($entry)), ['data-name' => $entry]);
 				}
 			}
 			else //files
@@ -84,8 +81,9 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 				};
 				if(!empty($ext))
 				{
-					$default = 'images/'.$ext.'.ico'; //image icon
-					$pictures->button(figure(img($default), figcaption($entry, title: date('Y F d H:i:s', $time))), ['data-src' => $path, 'data-time' => $time], onclick: 'openModal(this);');
+					$time = @filemtime($path); //modification time
+					if($time === false) $time = 0; //permission denied?
+					$pictures->button(figure(img(GIF1X1, alt: $entry, class: $ext, loading: 'lazy'), figcaption($entry, title: date('Y F d H:i:s', $time))), ['data-src' => $path, 'data-time' => $time], onclick: 'openModal(this);');
 				}
 			}
 		}
@@ -94,7 +92,7 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 		//sort dirs by name (case insensitive natural order)
 		$folders->sortby('data-name');
 	}
-	else h1('Failed to open directory!'); //Permission denied?
+	else h1('Failed to open directory!'); //permission denied?
 
 	comment('modal');
 	div(id: 'modal');
