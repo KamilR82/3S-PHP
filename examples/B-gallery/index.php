@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
-define('GALLERY', 'gallery');
-define('GIF1X1', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='); //valid 1x1 pixel GIF
+define('GALLERY', './gallery'); //default path
+define('GIF1X1', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='); //valid 1x1 pixel transparent GIF
 
 define('CONFIG_FILE', './../config.php'); //load config file (supported types .ini .env .php)
 require_once($_SERVER['DOCUMENT_ROOT'].'/core/singleton.php'); //initialize framework
@@ -22,13 +22,19 @@ trait PageTemplate
 		Page::Icon('images/pics.ico');
 		Page::Style('styles/main.css');
 		Page::Script('scripts/theme.js');
+		Page::Script('scripts/search.js');
 		Page::Script('scripts/timer.js');
 		Page::Script('scripts/thumbnail.js');
 	}
 
 	private static function Begin(): void //body
 	{
-		headr(h1(Page::Title()), button(id: 'theme-toggle'));
+		headr(true);
+			h1(Page::Title());
+			input(type: 'search', id: 'search-input',  placeholder: 'Search...');
+			button(img('images/search.ico'), id: 'search-toggle');
+			button(img('images/gear.ico'), id: 'theme-toggle');
+		headr(false);
 		main(true);
 	}
 
@@ -39,13 +45,13 @@ trait PageTemplate
 }
 
 //START PAGE
-Page::Start('Gallery'); //title
-
 $gallery = Request::GetParam('path') ?: GALLERY;
+
+Page::Start($gallery); //title
 
 if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 {
-	h4($gallery.DIRECTORY_SEPARATOR);
+	section(false, id: 'search-result');
 	hr();
 	$folders = section(false, id: 'folders');
 	hr();
@@ -53,8 +59,8 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 
 	if(FS::IsSubPath(GALLERY, $gallery))
 	{
-		$back = dirname($gallery);
-		$folders->href(Request::Modify(['path' => $back]), figure(img('images/back.ico'), figcaption('BACK')), ['data-name' => '']);
+		$folders->href(Request::Modify(['path' => GALLERY]), figure(img('images/back.ico'), figcaption('<HOME>')), ['data-name' => '']);
+		$folders->href(Request::Modify(['path' => dirname($gallery)]), figure(img('images/back.ico'), figcaption('<DIR UP>')), ['data-name' => '']);
 	}
 
 	if(($handle = @opendir($gallery)) !== false)
@@ -83,14 +89,16 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 				{
 					$time = @filemtime($path); //modification time
 					if($time === false) $time = 0; //permission denied?
-					$pictures->button(figure(img(GIF1X1, alt: $entry, class: $ext, loading: 'lazy'), figcaption($entry, title: date('Y F d H:i:s', $time))), ['data-src' => $path, 'data-time' => $time], onclick: 'openModal(this);');
+					$pictures->button(figure(img(GIF1X1, alt: $entry, class: $ext, loading: 'lazy'), figcaption($entry, title: date('Y F d H:i:s', $time))), ['data-src' => $path, 'data-name' => $entry, 'data-time' => $time], onclick: 'openModal(this);');
 				}
 			}
 		}
 		closedir($handle);
 
-		//sort dirs by name (case insensitive natural order)
-		$folders->sortby('data-name');
+		//sort
+		$folders->sortby('data-name'); //by filename (case insensitive natural order)
+		$pictures->sortby('data-name'); //by filename
+		//$pictures->sortby('data-time'); //by date-time (integer)
 	}
 	else h1('Failed to open directory!'); //permission denied?
 

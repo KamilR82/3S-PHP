@@ -1,9 +1,6 @@
 :root {
     --header-height: 60px;
-    --footer-height: 15px;
-    --sidebar-width-icon: 93px;
-    --sidebar-width-open: 280px;
-    --content-padding: 30px;
+    --content-padding: 20px;
     --transition-speed: 0.3s;
 
     --color-dark: #333;
@@ -50,6 +47,7 @@ a, button /* all links */
 header {
     display: flex;
     align-items: center;
+	gap: 10px;
 
     position: fixed; top: 0; left: 0;
     width: 100%; height: var(--header-height);
@@ -66,22 +64,28 @@ header h1 {
     white-space: nowrap;
     text-overflow: ellipsis;
 }
-button#theme-toggle {
-	min-width: 28px; /* dont change width by flexbox on small screen */
-    width: 28px;
-    height: 28px;
-    margin: 12px;
-	padding: 4px;
-    border: none;
-	border-radius: 14px;
-    cursor: pointer;
-    background: url('../images/theme.png') no-repeat center;
-	background-color: var(--color-gray-medium);
-	box-shadow: 0 0 8px var(--color-shadow);
-	transition: filter var(--transition-speed) ease;
+header input {
+    font-size: large;
+    width: 0px;
+	opacity: 0;
 }
-button#theme-toggle:hover {
-    filter: invert(100%);
+header input:focus,
+header input:not(:placeholder-shown) {
+    width: 100px;
+	opacity: 1;
+}
+header input:focus + #search-toggle,
+header input:not(:placeholder-shown) + #search-toggle {
+    display: none;
+}
+header button {
+	min-width: 32px; /* dont change width by flexbox on small screen */
+	background-color: transparent;
+    border: none;
+}
+header button img{
+    width: 32px;
+    height: 32px;
 }
 
 body {
@@ -96,6 +100,33 @@ hr {
 	margin: 0.5em;
 }
 
+section > * {
+	padding: 0.5em;
+}
+
+section img {
+	width: auto; /* aspect ratio (width based on height) */
+	max-width: 100%; /* ensures image doesn't overflow its container */
+}
+
+section#search-result {
+    display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	justify-content: flex-start; /* horizontal - left */
+	align-items: flex-start;
+}
+section#search-result img {
+	height: 32px;
+	display: inline-block;
+    vertical-align: middle; /* Aligns them vertically in the middle */
+}
+section#search-result figcaption {
+    display: inline-block; /* Makes them sit side-by-side */
+    vertical-align: middle; /* Aligns them vertically in the middle */
+	padding-left: 10px;
+}
+
 section#folders {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -108,10 +139,6 @@ section#pictures {
     align-items: center; /* vertical - center to row */
 	justify-content: flex-start; /* horizontal - left */
 	gap: 1em;
-}
-
-section > * {
-	padding: 0.5em;
 }
 
 section button {
@@ -135,11 +162,6 @@ figcaption {
     line-height: 1.2;
 }
 
-section img {
-	width: auto; /* aspect ratio (width based on height) */
-	max-width: 100%; /* ensures image doesn't overflow its container */
-}
-
 section#folders img {
 	height: 64px;
 }
@@ -147,7 +169,6 @@ section#folders img {
 section#pictures img {
 	height: 128px;
 	/* bg image */
-	min-width: 96px;
 	background-position: center;
 	background-repeat: no-repeat;
 	background-size: 70%;
@@ -222,4 +243,16 @@ div#modal progress#progress {
 	#next {
         display: none;
     }
+	div#modal img#zoomed {
+		max-width: 95vw;
+	}
+}
+
+@media only screen and (orientation: landscape) and (max-height: 600px) {
+    div#modal div#buttons {
+        margin: 0.2em;
+    }
+	div#modal img#zoomed {
+		max-width: 95vw;
+	}
 }

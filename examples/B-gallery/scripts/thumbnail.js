@@ -41,7 +41,7 @@ window.onload = async () => {
 			continue;
 		}
 		img.src = 'thumbnail.php?path=' + src;
-		await wait(250); //wait
+		await wait(100); //wait
 		btn.style.borderColor = prevColor;
 	}
 
@@ -110,32 +110,35 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener('keydown', function (event) {
-	switch (event.key) {
-		case 'Enter':
-			timer.toggle();
-			break;
-		case 'ArrowUp':
-			imgFirst();
-			break;
-		case 'ArrowLeft':
-			imgPrev();
-			break;
-		case 'ArrowRight':
-		case 'Space':
-		case ' ':
-			imgNext();
-			break;
-		case 'ArrowDown':
-			imgLast();
-			break;
-		case 'Escape':
-		case 'Backspace':
-			closeModal();
-			break;
-		default:
-			return;
+	if (actualBtn) //open modal
+	{
+		console.error('modal.style.display');
+		switch (event.key) {
+			case 'Enter':
+				timer.toggle();
+				break;
+			case 'ArrowUp':
+				imgFirst();
+				break;
+			case 'ArrowLeft':
+				imgPrev();
+				break;
+			case 'ArrowRight':
+			case 'Space':
+			case ' ':
+				imgNext();
+				break;
+			case 'ArrowDown':
+				imgLast();
+				break;
+			case 'Escape':
+				closeModal();
+				break;
+			default:
+				return;
+		}
+		event.preventDefault();
 	}
-	event.preventDefault();
 });
 
 window.addEventListener('popstate', function (event) { /* history back */
@@ -150,6 +153,7 @@ function openModal(btn) {
 
 function closeModal() {
 	timer.stop();
+	actualBtn = null;
 	modalImg.src = '';
 	modal.style.display = 'none';
 	if (history.state && history.state.modalOpen) history.back();
@@ -232,13 +236,17 @@ function imgFirst() {
 }
 
 function imgPrev() {
-	const prevSibling = actualBtn.previousElementSibling;
-	if (prevSibling) imgChange(prevSibling);
+	if (actualBtn) {
+		const prevSibling = actualBtn.previousElementSibling;
+		if (prevSibling) imgChange(prevSibling);
+	}
 }
 
 function imgNext() {
-	const nextSibling = actualBtn.nextElementSibling;
-	if (nextSibling) imgChange(nextSibling);
+	if (actualBtn) {
+		const nextSibling = actualBtn.nextElementSibling;
+		if (nextSibling) imgChange(nextSibling);
+	}
 }
 
 function imgLast() {
