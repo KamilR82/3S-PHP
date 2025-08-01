@@ -14,7 +14,7 @@ set_time_limit(0);
 while (ob_get_level()) ob_end_clean();
 
 $counter = findPathsContainingString($path, $string, 20);
-sendMessage(['result' => 'Found: ' . strval($counter)]);
+sendMessage(['result' => strval($counter)]);
 exit();
 
 //functions

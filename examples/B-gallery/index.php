@@ -1,7 +1,8 @@
 <?php declare(strict_types = 1);
 
 define('GALLERY', './gallery'); //default path
-define('GIF1X1', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='); //valid 1x1 pixel transparent GIF
+//define('GIF1X1', 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='); //valid 1x1 pixel GIF
+define('GIF1X1', 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEAAAAALAAAAAABAAEAAAIBAAA='); //valid 1x1 pixel transparent GIF
 
 define('CONFIG_FILE', './../config.php'); //load config file (supported types .ini .env .php)
 require_once($_SERVER['DOCUMENT_ROOT'].'/core/singleton.php'); //initialize framework
@@ -23,8 +24,9 @@ trait PageTemplate
 		Page::Style('styles/main.css');
 		Page::Script('scripts/theme.js');
 		Page::Script('scripts/search.js');
-		Page::Script('scripts/timer.js');
 		Page::Script('scripts/thumbnail.js');
+		Page::Script('scripts/timer.js');
+		Page::Script('scripts/slideshow.js');
 	}
 
 	private static function Begin(): void //body

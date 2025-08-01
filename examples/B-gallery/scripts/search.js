@@ -9,12 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	const searchResults = document.getElementById('search-result');
 	if (!searchToggle || !searchInput || !searchResults) return;
 
-	//open search box
-	searchToggle.addEventListener('click', () => {
-		searchInput.focus();
-		searchInput.select();
-	});
-
 	//server sent event
 	function SSE(query) {
 		debounceTimeout = setTimeout(async () => {
@@ -53,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					figure.appendChild(figcap);
 				}
 				if (data.result) {
-					header.textContent += ' (' + data.result + ')';
+					header.textContent += ' (' + data.result + ' hits)';
 				}
 			};
 
@@ -70,15 +64,21 @@ document.addEventListener('DOMContentLoaded', () => {
 				currentEventSource.close();
 				currentEventSource = null;
 			};
-		}, 500); //debouncing - search 500ms after last char
+		}, 800); //debouncing - search xxx ms after enter last char
 	}
+
+	//open search box
+	searchToggle.addEventListener('click', () => {
+		searchInput.focus();
+		searchInput.select();
+	});
 
 	//new search user input
 	searchInput.addEventListener('input', () => {
 		if (debounceTimeout) clearTimeout(debounceTimeout);
 
 		const query = searchInput.value.trim();
-		if (query.length < 3) {
+		if (query.length < 4) {
 			localStorage.removeItem('search');
 			searchResults.innerHTML = '';
 			return;

@@ -112,8 +112,6 @@ section img {
 section#search-result {
     display: flex;
 	flex-direction: column;
-	flex-wrap: wrap;
-	justify-content: flex-start; /* horizontal - left */
 	align-items: flex-start;
 }
 section#search-result img {
@@ -233,12 +231,8 @@ div#modal img#zoomed {
 	padding: 5px;
 }
 
-div#modal progress#progress {
-	display: none;
-}
-
 /* mobile */
-@media only screen and (orientation: portrait) and (max-width: 600px) {
+@media only screen and (max-width: 600px) {
     #prev,
 	#next {
         display: none;
@@ -248,11 +242,11 @@ div#modal progress#progress {
 	}
 }
 
-@media only screen and (orientation: landscape) and (max-height: 600px) {
+@media only screen and (max-height: 600px) {
     div#modal div#buttons {
         margin: 0.2em;
     }
 	div#modal img#zoomed {
-		max-width: 95vw;
+		max-height: 80vh;
 	}
 }
