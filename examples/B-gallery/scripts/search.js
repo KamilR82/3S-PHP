@@ -1,5 +1,7 @@
 'use strict';
 
+const searchKey = 'search'; //local storage key
+
 let debounceTimeout = null;
 let currentEventSource = null;
 
@@ -79,17 +81,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		const query = searchInput.value.trim();
 		if (query.length < 4) {
-			localStorage.removeItem('search');
+			localStorage.removeItem(searchKey);
 			searchResults.innerHTML = '';
 			return;
 		}
 
-		localStorage.setItem('search', query);
+		localStorage.setItem(searchKey, query);
 		SSE(query);
 	});
 
 	//old search from storage
-	const oldSearch = localStorage.getItem('search');
+	const oldSearch = localStorage.getItem(searchKey);
 	if (oldSearch) {
 		searchInput.value = oldSearch;
 		SSE(oldSearch);

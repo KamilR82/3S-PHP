@@ -9,8 +9,8 @@
     --color-gray-light: #f4f4f4;
 	--color-light: #fff;
 
-    --color-overlay: rgba(255, 255, 255, 0.85);
-    --color-shadow: rgba(0, 0, 0, 0.85);
+    --color-overlay: rgba(255, 255, 255, 0.75);
+    --color-shadow: rgba(255, 255, 255, 0.5);
     --color-transparent: #0000;
 }
 
@@ -32,8 +32,8 @@ body.dark {
     --color-gray-light: #333; /* side-menu-bg */
 	--color-light: #121212; /* main-bg, header-text */
 
-    --color-shadow: rgba(255, 255, 255, 0.85);
-    --color-overlay: rgba(0, 0, 0, 0.85);
+    --color-overlay: rgba(0, 0, 0, 0.75);
+    --color-shadow: rgba(0, 0, 0, 0.5);
 }
 
 a, button /* all links */
@@ -145,10 +145,6 @@ section button {
 	transition: transform var(--transition-speed) ease; /* zoom */
 }
 
-section button:hover {
-	transform: scale(1.5); /* zoom */
-}
-
 figure {
 	text-align: center; /* center image if smaller than text */
 }
@@ -187,10 +183,11 @@ div#modal {
 	position: fixed;
 	top: 0;
 	left: 0;
-	min-width: 100vw;
-	min-height: 100vh;
+	width: 100%;
+	height: 100%;
 	background: var(--color-overlay); /* not apply opacity to child elements */
 	display: none;
+
 	flex-direction: column;
 	align-items: center;  /* horizontally center children */
 	justify-content: flex-start; /* Align children to the start (top) initially */
@@ -201,8 +198,13 @@ div#modal div#buttons {
 	display: flex; /* Makes the container a flex container */
 	align-items: center; /* Vertically centers direct children along the cross-axis */
 	justify-content: center; /* Optionally horizontally centers items along the main-axis (if you want the group centered) */
-	gap: 0.6em;
-	margin: 1.2em;
+	gap: 8px;
+	padding: 2px;
+	margin: 8px;
+	z-index: 3000; /* over main image */
+	border-radius: 12px;
+	background-color: var(--color-shadow);
+	box-shadow: 0px 0px 6px 6px var(--color-shadow);
 }
 
 div#modal div#buttons img {
@@ -211,42 +213,71 @@ div#modal div#buttons img {
 	transition: transform var(--transition-speed) ease; /* zoom */
 }
 
-div#modal div#buttons img:not(.grayed):hover {
-	transform: scale(1.5); /* zoom */
-}
-
-.grayed {
-	filter: grayscale(1.0);
-	cursor: not-allowed !important;
-}
-
 div#modal img#zoomed {
-	max-width: 85vw;
-	max-height: 85vh;
+	max-width: 85%;
+	max-height: 85%;
 	object-fit: contain;
     margin: 0 auto; /* center */
+	z-index: 2000;
 
 	border: 1px solid var(--color-gray-dark);
 	background: var(--color-gray-light);
 	padding: 5px;
 }
 
+div#modal progress#progress {
+	z-index: 3000; /* over main image */
+}
+
 /* mobile */
-@media only screen and (max-width: 600px) {
+
+@media only screen and (orientation: portrait) and (max-width: 600px) {
     #prev,
 	#next {
-        display: none;
+        display: none; /* hide some buttons */
     }
 	div#modal img#zoomed {
-		max-width: 95vw;
+		max-width: 95%;
 	}
 }
 
-@media only screen and (max-height: 600px) {
-    div#modal div#buttons {
-        margin: 0.2em;
-    }
+@media only screen and (orientation: landscape) and (max-height: 600px) {
+	div#modal div#buttons {
+		margin: 0.5em;
+	}
 	div#modal img#zoomed {
-		max-height: 80vh;
+		max-height: 100%;
+		margin-top: -52px; /* under the buttons */
+	}
+	div#modal:fullscreen img#zoomed {
+		border: none;
+		padding: 0px;
+	}
+	div#modal progress#progress {
+		margin-top: -20px; /* over the image */
+	}
+}
+
+ /* disabled */
+
+.grayed {
+	filter: grayscale(1.0);
+	cursor: not-allowed !important;
+}
+
+ /* zoom */
+
+@media (hover: hover) { /* screen with hover - mouse */
+	section button:hover {
+		transform: scale(1.5); /* thumbnail zoom */
+	}
+	div#modal div#buttons img:not(.grayed):hover {
+		transform: scale(1.5);
+	}
+}
+
+@media (hover: none) { /* screen without hover - touch */
+	div#modal div#buttons img:not(.grayed):active {
+		transform: scale(1.5);
 	}
 }

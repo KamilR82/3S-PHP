@@ -23,6 +23,7 @@ trait PageTemplate
 		Page::Icon('images/pics.ico');
 		Page::Style('styles/main.css');
 		Page::Script('scripts/theme.js');
+		Page::Script('scripts/fullscreen.js');
 		Page::Script('scripts/search.js');
 		Page::Script('scripts/thumbnail.js');
 		Page::Script('scripts/timer.js');
@@ -61,7 +62,7 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 
 	if(FS::IsSubPath(GALLERY, $gallery))
 	{
-		$folders->href(Request::Modify(['path' => GALLERY]), figure(img('images/back.ico'), figcaption('<HOME>')), ['data-name' => '']);
+		$folders->href(Request::Modify(['path' => GALLERY]), figure(img('images/dir.ico'), figcaption('<HOME>')), ['data-name' => '']);
 		$folders->href(Request::Modify(['path' => dirname($gallery)]), figure(img('images/back.ico'), figcaption('<DIR UP>')), ['data-name' => '']);
 	}
 

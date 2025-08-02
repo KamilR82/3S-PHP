@@ -108,6 +108,7 @@ window.addEventListener('popstate', function (event) { /* history back */
 function openModal(btn) {
 	history.pushState({ modalOpen: true }, 'Image Modal Open', '#modal');
 	modal.style.display = 'flex';
+	fullscreen(modal);
 	imgChange(btn);
 }
 
@@ -115,6 +116,7 @@ function closeModal() {
 	timer.stop();
 	actualBtn = null;
 	modalImg.src = '';
+	fullscreen();
 	modal.style.display = 'none';
 	if (history.state && history.state.modalOpen) history.back();
 }
@@ -230,6 +232,7 @@ function timerStart() {
 		timerBar.max = 100;
 		timerBar.value = 0;
 	}
+	requestWakeLock();
 }
 
 function timerStop() {
@@ -240,6 +243,7 @@ function timerStop() {
 		timerBar.max = 100;
 		timerBar.value = 0;
 	}
+	releaseWakeLock();
 }
 
 function timerPause() {
