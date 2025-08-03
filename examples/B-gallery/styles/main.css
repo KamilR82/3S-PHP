@@ -186,25 +186,29 @@ div#modal {
 	width: 100%;
 	height: 100%;
 	background: var(--color-overlay); /* not apply opacity to child elements */
-	display: none;
-
-	flex-direction: column;
-	align-items: center;  /* horizontally center children */
-	justify-content: flex-start; /* Align children to the start (top) initially */
+	display: none; /* switch to grid */
+	grid-template-columns: 1fr; /* one column grid */
+	grid-template-rows: 1fr; /* one row grid */
 	z-index: 1000;
 }
+div#modal > * {
+	grid-column: 1 / 2; /* all child insert to first cell */
+	grid-row: 1 / 2; /* all child insert to first cell */
+}
 
-div#modal div#buttons {
-	display: flex; /* Makes the container a flex container */
-	align-items: center; /* Vertically centers direct children along the cross-axis */
-	justify-content: center; /* Optionally horizontally centers items along the main-axis (if you want the group centered) */
-	gap: 8px;
-	padding: 2px;
+div#modal > *:not(img) {
 	margin: 8px;
 	z-index: 3000; /* over main image */
 	border-radius: 12px;
 	background-color: var(--color-shadow);
-	box-shadow: 0px 0px 6px 6px var(--color-shadow);
+	box-shadow: 0px 0px 5px 5px var(--color-shadow);
+}
+
+div#modal div#buttons {
+	display: flex;
+	justify-content: center; /* center vertically */
+	align-items: center; /* center horizontally */
+	gap: 8px;
 }
 
 div#modal div#buttons img {
@@ -213,52 +217,51 @@ div#modal div#buttons img {
 	transition: transform var(--transition-speed) ease; /* zoom */
 }
 
-div#modal img#zoomed {
-	max-width: 85%;
-	max-height: 85%;
-	object-fit: contain;
-    margin: 0 auto; /* center */
-	z-index: 2000;
+div#modal div#exif {
+	white-space: pre-wrap; /* PHP_EOL */
+	display: none;
+}
 
-	border: 1px solid var(--color-gray-dark);
-	background: var(--color-gray-light);
-	padding: 5px;
+div#modal > img {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain; /* image keeps its aspect ratio, but is resized to fit within the given dimension */
+	z-index: 2000;
+	transition: transform var(--transition-speed) ease; /* swipe */
 }
 
 div#modal progress#progress {
-	z-index: 3000; /* over main image */
+	width: 220px;
+	height: 8px;
+	margin: 8px;
 }
+
+/* aligning items in a flex container */
+.hleft { justify-self: left; }
+.hcenter { justify-self: center; }
+.hright { justify-self: right; }
+.vtop { align-self: start; }
+.vcenter { align-self: center; }
+.vbottom { align-self: end; }
 
 /* mobile */
 
 @media only screen and (orientation: portrait) and (max-width: 600px) {
-    #prev,
-	#next {
-        display: none; /* hide some buttons */
+	#info,
+	#prev,
+	#next,
+	#download {
+        display: none;
     }
-	div#modal img#zoomed {
-		max-width: 95%;
-	}
 }
 
 @media only screen and (orientation: landscape) and (max-height: 600px) {
-	div#modal div#buttons {
-		margin: 0.5em;
-	}
-	div#modal img#zoomed {
-		max-height: 100%;
-		margin-top: -52px; /* under the buttons */
-	}
-	div#modal:fullscreen img#zoomed {
-		border: none;
-		padding: 0px;
-	}
-	div#modal progress#progress {
-		margin-top: -20px; /* over the image */
+	div#modal > *:not(img) {
+		margin: 0px;
 	}
 }
 
- /* disabled */
+ /* disabled buttons */
 
 .grayed {
 	filter: grayscale(1.0);

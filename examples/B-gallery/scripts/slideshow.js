@@ -11,6 +11,20 @@ function loadImg(url, img = null) {
 	});
 };
 
+async function getdata(url, element) {
+	console.log('Loading image info: ' + url);
+	element.innerHTML = '';
+	try {
+		const response = await fetch(url);
+		if (!response.ok) throw new Error(`Network error: ${response.status} ${response.statusText}`);
+		const data = await response.text();
+		element.innerHTML = data;
+
+	} catch (error) {
+		console.error('Loading image info: ', error);
+	}
+}
+
 //modal slideshow
 let modal;
 let modalImg;
@@ -28,6 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		buttonsDiv.addEventListener('click', function (event) {
 			if (event.target.tagName === 'IMG' && !event.target.classList.contains('grayed')) {
 				switch (event.target.id) {
+					case 'info':
+						imgInfo();
+						break;
 					case 'slideshow':
 						timer.toggle();
 						break;
@@ -43,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
 					case 'forward':
 						imgLast();
 						break;
+					case 'download':
+						imgDownload();
+						break;
 					case 'close':
 						closeModal();
 						break;
@@ -52,17 +72,23 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	//touch screen swipe
+	const threshold = 50; //minimum distance in pixels for a swipe to be recognized
 	modalImg.addEventListener('touchstart', (e) => {
 		startX = e.touches[0].clientX;
 		startY = e.touches[0].clientY;
 	});
 	modalImg.addEventListener('touchmove', (e) => {
 		e.preventDefault(); //prevent default scrolling behavior
+		const diffX = e.touches[0].clientX - startX;
+		const diffY = e.touches[0].clientY - startY;
+		if (Math.abs(diffX) > Math.abs(diffY)) { //horizontal swipe
+			modalImg.style.transform = `translateX(${diffX}px)`;
+		}
 	});
 	modalImg.addEventListener('touchend', (e) => {
+		modalImg.style.transform = 'none';
 		const diffX = e.changedTouches[0].clientX - startX;
 		const diffY = e.changedTouches[0].clientY - startY;
-		const threshold = 50; //minimum distance in pixels for a swipe to be recognized
 		if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) { //horizontal swipe
 			if (diffX > 0) imgPrev(); //swipe right (go left)
 			else imgNext(); //swipe left (go right)
@@ -88,6 +114,10 @@ document.addEventListener('keydown', function (event) {
 			case ' ':
 				imgNext();
 				break;
+			case 'i':
+			case 'I':
+				imgInfo();
+				break;
 			case 'ArrowDown':
 				imgLast();
 				break;
@@ -107,16 +137,16 @@ window.addEventListener('popstate', function (event) { /* history back */
 
 function openModal(btn) {
 	history.pushState({ modalOpen: true }, 'Image Modal Open', '#modal');
-	modal.style.display = 'flex';
+	modal.style.display = 'grid';
 	fullscreen(modal);
 	imgChange(btn);
 }
 
 function closeModal() {
+	fullscreen();
 	timer.stop();
 	actualBtn = null;
 	modalImg.src = '';
-	fullscreen();
 	modal.style.display = 'none';
 	if (history.state && history.state.modalOpen) history.back();
 }
@@ -155,10 +185,11 @@ function imgChange(element) {
 	const slideshowState = timer.isRunning(); //get slideshow state
 	timer.pause(); //start loading progress
 	timer.reset();
+	//reset img
 	//try to load image
 	//loadImg(src, modalImg) //load image directly (full size)
-	const w = document.documentElement.clientWidth; //viewport width
-	const h = document.documentElement.clientHeight; //viewport height
+	const w = modal.clientWidth; //document.documentElement.clientWidth; //viewport width
+	const h = modal.clientHeight; //document.documentElement.clientHeight; //viewport height
 	loadImg('thumbnail.php?w=' + w + '&h=' + h + '&path=' + src, modalImg) //load image directly (size by viewport)
 		.then(loadedImage => { //done
 			console.log('Image Done.');
@@ -181,10 +212,25 @@ function imgChange(element) {
 					btnLast.classList.remove('grayed');
 				}
 			}
+			//info
 		})
 		.catch(error => {
 			console.error(error.message);
 		});
+	//info
+	const exif = document.getElementById('exif');
+	if (exif) getdata('imageinfo.php?path=' + src, exif);
+}
+
+function imgInfo() {
+	const exif = document.getElementById('exif');
+	if (exif) {
+		if (exif.style.display === 'none' || exif.style.display === '') {
+			exif.style.display = 'block';
+		} else {
+			exif.style.display = 'none';
+		}
+	}
 }
 
 function imgFirst() {
@@ -209,6 +255,28 @@ function imgNext() {
 function imgLast() {
 	const parent = document.getElementById('pictures');
 	if (parent) imgChange(parent.lastElementChild);
+}
+
+function getFilenameFromPath(filePath) {
+    const lastSlashIndex = filePath.lastIndexOf('/');
+    const lastBackslashIndex = filePath.lastIndexOf('\\');
+    const lastDelimiterIndex = Math.max(lastSlashIndex, lastBackslashIndex);
+    return lastDelimiterIndex === -1 ? filePath : filePath.substring(lastDelimiterIndex + 1);
+}
+
+function imgDownload() {
+	if (actualBtn) {
+		const src = actualBtn.getAttribute('data-src');
+		if (!src) return;
+
+		const maxWorH = 2000; //max W or H
+		const link = document.createElement('a'); //hidden link
+		link.href = 'thumbnail.php?dl=true&w=' + maxWorH + '&h=' + maxWorH + '&path=' + src;
+		link.download = getFilenameFromPath(src);
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	}
 }
 
 //slideshow

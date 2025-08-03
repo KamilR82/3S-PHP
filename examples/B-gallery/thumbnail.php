@@ -92,6 +92,8 @@ if(file_exists($file))
 			else //to output
 			{
 				header('Content-Type: ' . $image_info['mime']);
+				//header('Content-Length: ' . ???);
+				if(isset($_GET['dl'])) header('Content-Disposition: attachment; filename="' . basename($file) . '"');
 				imagegif($image_orig);
 				imagedestroy($image_orig);
 				exit;
@@ -107,6 +109,7 @@ if(file_exists($file))
 		{
 			header('Content-Type: ' . $image_info['mime']);
 			header('Content-Length: ' . filesize($thumbnail));
+			if(isset($_GET['dl'])) header('Content-Disposition: attachment; filename="' . basename($file) . '"');
 
 			readfile($thumbnail);
 			exit;

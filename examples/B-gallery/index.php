@@ -107,19 +107,24 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 
 	comment('modal');
 	div(id: 'modal');
-	div(id: 'buttons');
-	img('images/play.ico', id: 'slideshow');
-	txt('&nbsp;');
-	img('images/rewind.ico', id: 'rewind');
-	img('images/prev.ico', id: 'prev');
-	strong(false, id: 'counter');
-	img('images/next.ico', id: 'next');
-	img('images/forward.ico', id: 'forward');
-	txt('&nbsp;');
-	img('images/close.ico', id: 'close');
-	div(false); //buttons
-	img(id: 'zoomed');
-	progress(id: 'progress', max: 100, value: 0);
+		div(id: 'buttons', class: 'hcenter vtop');
+			img('images/info.ico', id: 'info');
+			txt('&nbsp;');
+			img('images/play.ico', id: 'slideshow');
+			txt('&nbsp;');
+			img('images/rewind.ico', id: 'rewind');
+			img('images/prev.ico', id: 'prev');
+			strong(false, id: 'counter');
+			img('images/next.ico', id: 'next');
+			img('images/forward.ico', id: 'forward');
+			txt('&nbsp;');
+			img('images/download.ico', id: 'download');
+			txt('&nbsp;');
+			img('images/close.ico', id: 'close');
+		div(false); //buttons
+		div(false, id: 'exif', class: 'hleft vcenter');
+		img(id: 'zoomed', class: 'hcenter vcenter');
+		div(progress(id: 'progress', max: 100, value: 0), class: 'hcenter vbottom');
 	div(false);
 
 }
