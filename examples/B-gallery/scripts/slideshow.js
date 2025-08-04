@@ -71,28 +71,80 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	//touch screen swipe
+	//zoom
+	function getScale() {
+		const match = modalImg.style.transform.match(/scale\(([^)]*)\)/);
+		if (match && match[1]) return parseFloat(match[1]) || 1;
+		return 1;
+	}
+
+	function setScale(newScale) {
+		newScale = Math.min(Math.max(newScale, 1), 3); //zoom limitation 1 to 3
+		const updatedTransform = modalImg.style.transform.replace(/scale\([^)]*\)/g, '').trim();
+		modalImg.style.transform = `${updatedTransform} scale(${newScale})`;
+	}
+
+	modalImg.addEventListener('dblclick', (e) => {
+		const x = e.offsetX;
+		const y = e.offsetY;
+		modalImg.style.transformOrigin = `${x}px ${y}px`;
+		if (getScale() > 1) setScale(1.0);
+		else setScale(1.5);
+	});
+
+	//touch screen
+	function getDistance(touches) {
+		if (touches.length < 2) return null;
+		const dx = touches[0].clientX - touches[1].clientX;
+		const dy = touches[0].clientY - touches[1].clientY;
+		return Math.sqrt(dx * dx + dy * dy);
+	}
+
+	function getMidPoint(touches) {
+		if (touches.length < 2) return null;
+		const midX = (touches[0].clientX + touches[1].clientX) / 2;
+		const midY = (touches[0].clientY + touches[1].clientY) / 2;
+		return { x: midX, y: midY };
+	}
+
+	let scale = 1;
+	let initialDistance = null;
 	const threshold = 50; //minimum distance in pixels for a swipe to be recognized
 	modalImg.addEventListener('touchstart', (e) => {
 		startX = e.touches[0].clientX;
 		startY = e.touches[0].clientY;
+		if (e.touches.length > 1) { //more fingers
+			const mid = getMidPoint(e.touches);
+			modalImg.style.transformOrigin = `${mid.x}px ${mid.y}px`;
+			initialDistance = getDistance(e.touches);
+		}
+		else { //one finger
+			modalImg.style.transformOrigin = `${startX}px ${startY}px`;
+			initialDistance = null;
+		}
 	});
 	modalImg.addEventListener('touchmove', (e) => {
 		e.preventDefault(); //prevent default scrolling behavior
-		const diffX = e.touches[0].clientX - startX;
-		const diffY = e.touches[0].clientY - startY;
-		if (Math.abs(diffX) > Math.abs(diffY)) { //horizontal swipe
-			modalImg.style.transform = `translateX(${diffX}px)`;
+		if (e.touches.length > 1) { //more fingers - pinch zoom
+			const currentDistance = getDistance(e.touches);
+			setScale(scale * (currentDistance / initialDistance)); //new scale
+		} else { //one finger - swipe
+			const diffX = e.touches[0].clientX - startX;
+			const diffY = e.touches[0].clientY - startY;
+			if (Math.abs(diffX) > Math.abs(diffY)) { //horizontal swipe
+				modalImg.style.transform = `translateX(${diffX}px)`;
+			}
 		}
 	});
 	modalImg.addEventListener('touchend', (e) => {
-		modalImg.style.transform = 'none';
+		modalImg.style.transform = '';
 		const diffX = e.changedTouches[0].clientX - startX;
 		const diffY = e.changedTouches[0].clientY - startY;
 		if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) { //horizontal swipe
 			if (diffX > 0) imgPrev(); //swipe right (go left)
 			else imgNext(); //swipe left (go right)
 		}
+		scale = 1;
 	});
 });
 
@@ -258,10 +310,10 @@ function imgLast() {
 }
 
 function getFilenameFromPath(filePath) {
-    const lastSlashIndex = filePath.lastIndexOf('/');
-    const lastBackslashIndex = filePath.lastIndexOf('\\');
-    const lastDelimiterIndex = Math.max(lastSlashIndex, lastBackslashIndex);
-    return lastDelimiterIndex === -1 ? filePath : filePath.substring(lastDelimiterIndex + 1);
+	const lastSlashIndex = filePath.lastIndexOf('/');
+	const lastBackslashIndex = filePath.lastIndexOf('\\');
+	const lastDelimiterIndex = Math.max(lastSlashIndex, lastBackslashIndex);
+	return lastDelimiterIndex === -1 ? filePath : filePath.substring(lastDelimiterIndex + 1);
 }
 
 function imgDownload() {
