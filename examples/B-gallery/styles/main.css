@@ -196,6 +196,19 @@ div#modal > * {
 	grid-row: 1 / 2; /* all child insert to first cell */
 }
 
+div#modal > img {
+	min-width: 0; /* allows the image to shrink */
+	min-height: 0; /* allows the image to shrink */
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain; /* image keeps its aspect ratio, but is resized to fit within the given dimension */
+	z-index: 2000;
+	transition: transform var(--transition-speed) ease-out; /* swipe or zoom */
+	transform-origin: center;
+	touch-action: none; /* Disables browsers from handling all pan and zoom interactions. This opens up the ability to custom define those interactions in JS */
+	cursor: grab;
+}
+
 div#modal > *:not(img) {
 	margin: 8px;
 	z-index: 3000; /* over main image */
@@ -222,16 +235,6 @@ div#modal div#exif {
 	display: none;
 }
 
-div#modal > img {
-	max-width: 100%;
-	max-height: 100%;
-	object-fit: contain; /* image keeps its aspect ratio, but is resized to fit within the given dimension */
-	z-index: 2000;
-	transition: transform var(--transition-speed) ease-out; /* swipe or zoom */
-	transform-origin: center;
-	touch-action: none; /* Disables browsers from handling all pan and zoom interactions. This opens up the ability to custom define those interactions in JS */
-}
-
 div#modal progress#progress {
 	width: 220px;
 	height: 8px;
@@ -247,7 +250,6 @@ div#modal progress#progress {
 .vbottom { align-self: end; }
 
 /* mobile */
-
 @media only screen and (orientation: portrait) and (max-width: 600px) {
 	#info,
 	#prev,

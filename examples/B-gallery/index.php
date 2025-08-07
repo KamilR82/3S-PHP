@@ -123,7 +123,7 @@ if(is_dir($gallery) && FS::IsSubPath(GALLERY, $gallery, true))
 			img('images/close.ico', id: 'close');
 		div(false); //buttons
 		div(false, id: 'exif', class: 'hleft vcenter');
-		img(id: 'zoomed', class: 'hcenter vcenter');
+		img(id: 'zoomable', class: 'hcenter vcenter');
 		div(progress(id: 'progress', max: 100, value: 0), class: 'hcenter vbottom');
 	div(false);
 

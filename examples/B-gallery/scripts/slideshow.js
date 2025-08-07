@@ -31,10 +31,15 @@ let modalImg;
 let actualBtn;
 
 let startX, startY;
+let initialDistance = null;
+let initialMidPoint = null;
+let currentScale = 1.0;
+let currentTranslate = { x: 0, y: 0 };
+let lastMidPoint = { x: 0, y: 0 };
 
 document.addEventListener('DOMContentLoaded', () => {
 	modal = document.getElementById('modal');
-	modalImg = document.getElementById('zoomed');
+	modalImg = document.getElementById('zoomable');
 
 	//buttons on modal
 	const buttonsDiv = modal.querySelector('#buttons'); //document.getElementById('buttons'); //same
@@ -72,79 +77,96 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	//zoom
-	function getScale() {
-		const match = modalImg.style.transform.match(/scale\(([^)]*)\)/);
-		if (match && match[1]) return parseFloat(match[1]) || 1;
-		return 1;
-	}
-
-	function setScale(newScale) {
-		newScale = Math.min(Math.max(newScale, 1), 3); //zoom limitation 1 to 3
-		const updatedTransform = modalImg.style.transform.replace(/scale\([^)]*\)/g, '').trim();
-		modalImg.style.transform = `${updatedTransform} scale(${newScale})`;
+	function applyTransform() {
+		if (currentScale === 1.0) {
+			currentTranslate.x = 0;
+			currentTranslate.y = 0;
+		}
+		modalImg.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${currentScale})`;
 	}
 
 	modalImg.addEventListener('dblclick', (e) => {
-		const x = e.offsetX;
-		const y = e.offsetY;
-		modalImg.style.transformOrigin = `${x}px ${y}px`;
-		if (getScale() > 1) setScale(1.0);
-		else setScale(1.5);
+		e.preventDefault();
+		if (currentScale > 1) {
+			currentScale = 1.0; //zoom out
+		} else {
+			const x = e.offsetX;
+			const y = e.offsetY;
+			modalImg.style.transformOrigin = `${x}px ${y}px`;
+			currentScale = 2.0; //zoom in
+			imgChange(actualBtn, currentScale); //reload image with double size
+		}
+		applyTransform();
 	});
 
 	//touch screen
 	function getDistance(touches) {
-		if (touches.length < 2) return null;
+		if (touches.length < 2) return 0;
 		const dx = touches[0].clientX - touches[1].clientX;
 		const dy = touches[0].clientY - touches[1].clientY;
 		return Math.sqrt(dx * dx + dy * dy);
 	}
 
 	function getMidPoint(touches) {
-		if (touches.length < 2) return null;
-		const midX = (touches[0].clientX + touches[1].clientX) / 2;
-		const midY = (touches[0].clientY + touches[1].clientY) / 2;
+		if (touches.length < 1) return null;
+		let midX = touches[0].clientX;
+		let midY = touches[0].clientY;
+		if (touches.length > 1) {
+			midX = (midX + touches[1].clientX) / 2;
+			midY = (midY + touches[1].clientY) / 2;
+		}
 		return { x: midX, y: midY };
 	}
 
-	let scale = 1;
-	let initialDistance = null;
-	const threshold = 50; //minimum distance in pixels for a swipe to be recognized
 	modalImg.addEventListener('touchstart', (e) => {
-		startX = e.touches[0].clientX;
-		startY = e.touches[0].clientY;
-		if (e.touches.length > 1) { //more fingers
-			const mid = getMidPoint(e.touches);
-			modalImg.style.transformOrigin = `${mid.x}px ${mid.y}px`;
-			initialDistance = getDistance(e.touches);
-		}
-		else { //one finger
-			modalImg.style.transformOrigin = `${startX}px ${startY}px`;
-			initialDistance = null;
-		}
+		if (e.touches.length > 1) e.preventDefault(); //only for more fingers because dblclick
+		initialDistance = getDistance(e.touches);
+		initialMidPoint = getMidPoint(e.touches);
 	});
 	modalImg.addEventListener('touchmove', (e) => {
 		e.preventDefault(); //prevent default scrolling behavior
+		const currentMidPoint = getMidPoint(e.touches);
+		const deltaX = currentMidPoint.x - initialMidPoint.x;
+		const deltaY = currentMidPoint.y - initialMidPoint.y;
 		if (e.touches.length > 1) { //more fingers - pinch zoom
-			const currentDistance = getDistance(e.touches);
-			setScale(scale * (currentDistance / initialDistance)); //new scale
-		} else { //one finger - swipe
-			const diffX = e.touches[0].clientX - startX;
-			const diffY = e.touches[0].clientY - startY;
-			if (Math.abs(diffX) > Math.abs(diffY)) { //horizontal swipe
-				modalImg.style.transform = `translateX(${diffX}px)`;
+			if (initialDistance !== null) {
+				const currentDistance = getDistance(e.touches);
+				const scaleFactor = currentDistance / initialDistance;
+				currentScale = currentScale * scaleFactor;
+				currentScale = Math.max(1, Math.min(3, currentScale)); //limit zoom 1-3
+				initialDistance = currentDistance;
+
+				currentTranslate.x += deltaX;
+				currentTranslate.y += deltaY;
+				applyTransform();
+				initialMidPoint = currentMidPoint;
+			}
+		} else { //one finger
+			if (currentScale > 1.0) { //move
+				currentTranslate.x += deltaX;
+				currentTranslate.y += deltaY;
+				applyTransform();
+				initialMidPoint = currentMidPoint;
+			} else { //swipe
+				if (Math.abs(deltaX) > Math.abs(deltaY)) { //horizontal swipe
+					modalImg.style.transform = `translateX(${deltaX}px)`;
+				}
 			}
 		}
 	});
 	modalImg.addEventListener('touchend', (e) => {
-		modalImg.style.transform = '';
-		const diffX = e.changedTouches[0].clientX - startX;
-		const diffY = e.changedTouches[0].clientY - startY;
-		if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) { //horizontal swipe
-			if (diffX > 0) imgPrev(); //swipe right (go left)
-			else imgNext(); //swipe left (go right)
+		if (e.touches.length > 1) { //more fingers
+			initialDistance = null;
+			initialMidPoint = null;
+		} else if (currentScale === 1.0) { //one finger - swipe
+			const deltaX = e.changedTouches[0].clientX - initialMidPoint.x;
+			const deltaY = e.changedTouches[0].clientY - initialMidPoint.y;
+			const threshold = 50; //minimum distance in pixels for a swipe to be recognized
+			if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) { //horizontal swipe
+				if (deltaX > 0) imgPrev(); //swipe right (go left)
+				else imgNext(); //swipe left (go right)
+			}
 		}
-		scale = 1;
 	});
 });
 
@@ -189,7 +211,7 @@ window.addEventListener('popstate', function (event) { /* history back */
 
 function openModal(btn) {
 	history.pushState({ modalOpen: true }, 'Image Modal Open', '#modal');
-	modal.style.display = 'grid';
+	modal.style.display = 'grid'; //show
 	fullscreen(modal);
 	imgChange(btn);
 }
@@ -199,7 +221,7 @@ function closeModal() {
 	timer.stop();
 	actualBtn = null;
 	modalImg.src = '';
-	modal.style.display = 'none';
+	modal.style.display = 'none'; //hide
 	if (history.state && history.state.modalOpen) history.back();
 }
 
@@ -214,7 +236,7 @@ function getElementCount(element) {
 	return element.parentElement.children.length;
 }
 
-function imgChange(element) {
+function imgChange(element, scale = 1.0) {
 	if (!element) return;
 	const src = element.getAttribute('data-src');
 	if (!src) return;
@@ -240,9 +262,10 @@ function imgChange(element) {
 	//reset img
 	//try to load image
 	//loadImg(src, modalImg) //load image directly (full size)
-	const w = modal.clientWidth; //document.documentElement.clientWidth; //viewport width
-	const h = modal.clientHeight; //document.documentElement.clientHeight; //viewport height
-	loadImg('thumbnail.php?w=' + w + '&h=' + h + '&path=' + src, modalImg) //load image directly (size by viewport)
+	if (scale === 1.0) modalImg.style.transform = ''; //reset zoom
+	const w = modal.clientWidth * scale; //document.documentElement.clientWidth; //viewport width
+	const h = modal.clientHeight * scale; //document.documentElement.clientHeight; //viewport height
+	loadImg('thumbnail.php?w=' + w + '&h=' + h + '&path=' + src, modalImg) //load image directly (size by demand)
 		.then(loadedImage => { //done
 			console.log('Image Done.');
 			actualBtn = element;
