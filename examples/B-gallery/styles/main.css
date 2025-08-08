@@ -201,6 +201,8 @@ div#modal > img {
 	min-height: 0; /* allows the image to shrink */
 	max-width: 100%;
 	max-height: 100%;
+	width: auto;
+	height: auto;
 	object-fit: contain; /* image keeps its aspect ratio, but is resized to fit within the given dimension */
 	z-index: 2000;
 	transition: transform var(--transition-speed) ease-out; /* swipe or zoom */

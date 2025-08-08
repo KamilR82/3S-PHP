@@ -78,21 +78,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	//zoom
 	function applyTransform() {
-		if (currentScale === 1.0) {
-			currentTranslate.x = 0;
-			currentTranslate.y = 0;
-		}
 		modalImg.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${currentScale})`;
 	}
 
+	//mouse
+	document.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		//origin
+		const rect = modalImg.getBoundingClientRect();
+		const mouseX = e.clientX - rect.left;
+		const mouseY = e.clientY - rect.top;
+		const originX = (mouseX / rect.width) * 100;
+		const originY = (mouseY / rect.height) * 100;
+		modalImg.style.transformOrigin = `${originX}% ${originY}%`;
+		//scale
+		const scaleFactor = 0.1;
+		if (e.deltaY < 0) {
+			currentScale += scaleFactor; //zoom in
+		} else {
+			currentScale -= scaleFactor; //zoom out
+		}
+		currentScale = Math.max(1, Math.min(3, currentScale)); //limit zoom 1-3
+		applyTransform(); //modalImg.style.transform = `scale(${currentScale})`;
+	});
+
+	//double click or double touch
 	modalImg.addEventListener('dblclick', (e) => {
 		e.preventDefault();
 		if (currentScale > 1) {
 			currentScale = 1.0; //zoom out
+			currentTranslate.x = 0;
+			currentTranslate.y = 0;
 		} else {
-			const x = e.offsetX;
-			const y = e.offsetY;
-			modalImg.style.transformOrigin = `${x}px ${y}px`;
+			const originX = e.offsetX;
+			const originY = e.offsetY;
+			modalImg.style.transformOrigin = `${originX}px ${originY}px`;
 			currentScale = 2.0; //zoom in
 			imgChange(actualBtn, currentScale); //reload image with double size
 		}
@@ -108,13 +128,15 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	function getMidPoint(touches) {
-		if (touches.length < 1) return null;
-		let midX = touches[0].clientX;
-		let midY = touches[0].clientY;
-		if (touches.length > 1) {
-			midX = (midX + touches[1].clientX) / 2;
-			midY = (midY + touches[1].clientY) / 2;
+		if (touches.length === 0) return null;
+		let midX = 0;
+		let midY = 0;
+		for (let i = 0; i < touches.length; i++) {
+			midX += touches[i].clientX;
+			midY += touches[i].clientY;
 		}
+		midX /= touches.length;
+		midY /= touches.length;
 		return { x: midX, y: midY };
 	}
 
@@ -128,37 +150,31 @@ document.addEventListener('DOMContentLoaded', () => {
 		const currentMidPoint = getMidPoint(e.touches);
 		const deltaX = currentMidPoint.x - initialMidPoint.x;
 		const deltaY = currentMidPoint.y - initialMidPoint.y;
-		if (e.touches.length > 1) { //more fingers - pinch zoom
+		currentTranslate.x += deltaX;
+		currentTranslate.y += deltaY;
+		if (e.touches.length > 1) { //more fingers - pinch zoom & move
 			if (initialDistance !== null) {
 				const currentDistance = getDistance(e.touches);
 				const scaleFactor = currentDistance / initialDistance;
 				currentScale = currentScale * scaleFactor;
 				currentScale = Math.max(1, Math.min(3, currentScale)); //limit zoom 1-3
 				initialDistance = currentDistance;
-
-				currentTranslate.x += deltaX;
-				currentTranslate.y += deltaY;
-				applyTransform();
 				initialMidPoint = currentMidPoint;
 			}
 		} else { //one finger
 			if (currentScale > 1.0) { //move
-				currentTranslate.x += deltaX;
-				currentTranslate.y += deltaY;
-				applyTransform();
 				initialMidPoint = currentMidPoint;
 			} else { //swipe
 				if (Math.abs(deltaX) > Math.abs(deltaY)) { //horizontal swipe
-					modalImg.style.transform = `translateX(${deltaX}px)`;
+					currentTranslate.x = deltaX;
+					currentTranslate.y = 0;
 				}
 			}
 		}
+		applyTransform();
 	});
 	modalImg.addEventListener('touchend', (e) => {
-		if (e.touches.length > 1) { //more fingers
-			initialDistance = null;
-			initialMidPoint = null;
-		} else if (currentScale === 1.0) { //one finger - swipe
+		if (e.touches.length === 0 && currentScale === 1.0) { //last finger up - swipe end
 			const deltaX = e.changedTouches[0].clientX - initialMidPoint.x;
 			const deltaY = e.changedTouches[0].clientY - initialMidPoint.y;
 			const threshold = 50; //minimum distance in pixels for a swipe to be recognized
@@ -166,7 +182,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (deltaX > 0) imgPrev(); //swipe right (go left)
 				else imgNext(); //swipe left (go right)
 			}
+			currentTranslate.x = 0;
+			currentTranslate.y = 0;
+			applyTransform();
 		}
+		initialDistance = getDistance(e.touches);
+		initialMidPoint = getMidPoint(e.touches);
 	});
 });
 
