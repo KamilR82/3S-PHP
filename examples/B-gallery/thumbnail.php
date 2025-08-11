@@ -61,26 +61,29 @@ if(file_exists($file))
 					default => 0,
 				};
 			}
-			$sideways = abs($rotate) == 90 ? true : false;
-			//calc aspect ratio
-			$screenAR = $viewport_width / $viewport_height;
-			$imageAR = $sideways ? $height / $width : $width / $height;
-			//resize
-			if($imageAR > $screenAR) // The image is wider in proportion than the screen, so we will limit it to the screen's width.
+			if($viewport_width < $width && $viewport_height < $height) //downscale only
 			{
-				$width = $viewport_width;
-				$height = round($viewport_width / $imageAR);
+				$sideways = abs($rotate) == 90 ? true : false;
+				//calc aspect ratio
+				$screenAR = $viewport_width / $viewport_height;
+				$imageAR = $sideways ? $height / $width : $width / $height;
+				//resize
+				if($imageAR > $screenAR) // The image is wider in proportion than the screen, so we will limit it to the screen's width.
+				{
+					$width = $viewport_width;
+					$height = round($viewport_width / $imageAR);
+				}
+				else // The image is taller in proportion than the screen, so we will limit it to the screen's height.
+				{
+					$height = $viewport_height;
+					$width = $viewport_height * $imageAR;
+				}
+				//scale
+				if($sideways)
+					$image_orig = imagescale($image_orig, intval($height), intval($width));
+				else
+					$image_orig = imagescale($image_orig, intval($width), intval($height));
 			}
-			else // The image is taller in proportion than the screen, so we will limit it to the screen's height.
-			{
-				$height = $viewport_height;
-				$width = $viewport_height * $imageAR;
-			}
-			//scale
-			if($sideways)
-				$image_orig = imagescale($image_orig, intval($height), intval($width));
-			else
-				$image_orig = imagescale($image_orig, intval($width), intval($height));
 			//rotate
 			if($rotate !== 0) $image_orig = imagerotate($image_orig, $rotate, 0);
 			//output
@@ -94,7 +97,13 @@ if(file_exists($file))
 				header('Content-Type: ' . $image_info['mime']);
 				//header('Content-Length: ' . ???);
 				if(isset($_GET['dl'])) header('Content-Disposition: attachment; filename="' . basename($file) . '"');
-				imagegif($image_orig);
+				match($image_info[2])
+				{
+					IMAGETYPE_JPEG => imagejpeg($image_orig),
+					IMAGETYPE_PNG => imagepng($image_orig),
+					IMAGETYPE_BMP => imagewbmp($image_orig),
+					default => imagegif($image_orig),
+				};
 				imagedestroy($image_orig);
 				exit;
 			}

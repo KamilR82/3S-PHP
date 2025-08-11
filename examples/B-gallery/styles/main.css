@@ -206,7 +206,6 @@ div#modal > img {
 	object-fit: contain; /* image keeps its aspect ratio, but is resized to fit within the given dimension */
 	z-index: 2000;
 	transition: transform var(--transition-speed) ease-out; /* swipe or zoom */
-	transform-origin: center;
 	touch-action: none; /* Disables browsers from handling all pan and zoom interactions. This opens up the ability to custom define those interactions in JS */
 	cursor: grab;
 }

@@ -30,12 +30,25 @@ let modal;
 let modalImg;
 let actualBtn;
 
-let startX, startY;
-let initialDistance = null;
 let initialMidPoint = null;
+let initialDistance = null;
 let currentScale = 1.0;
 let currentTranslate = { x: 0, y: 0 };
-let lastMidPoint = { x: 0, y: 0 };
+let hSwipe = null; //horizontal swipe distance
+
+function applyTransform() {
+	modalImg.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${currentScale})`;
+	//need upscale image?
+	console.log('Transform applied. Current scale: ' + currentScale);
+	if (currentScale > 1.0 && modalImg.naturalWidth > 0 && modalImg.naturalHeight > 0) {
+		const scaledRect = modalImg.getBoundingClientRect(); //get image size and position after transform
+		const ratioW = scaledRect.width / modalImg.naturalWidth;
+		const ratioH = scaledRect.height / modalImg.naturalHeight;
+		const ratio = Math.max(ratioW, ratioH).toFixed(1); //use the larger ratio
+		console.log('Need reload? Ratio: ' + ratio);
+		if(ratio > 1.2) imgChange(actualBtn, currentScale); //if image is too small, reload it
+	}
+}
 
 document.addEventListener('DOMContentLoaded', () => {
 	modal = document.getElementById('modal');
@@ -76,45 +89,66 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	//zoom
-	function applyTransform() {
-		modalImg.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${currentScale})`;
-	}
-
-	//mouse
-	document.addEventListener('wheel', (e) => {
+	//mouse drag
+	modalImg.addEventListener('mousedown', (e) => {
+		if (currentScale <= 1.0) return; //only drag when zoomed in
 		e.preventDefault();
-		//origin
-		const rect = modalImg.getBoundingClientRect();
-		const mouseX = e.clientX - rect.left;
-		const mouseY = e.clientY - rect.top;
-		const originX = (mouseX / rect.width) * 100;
-		const originY = (mouseY / rect.height) * 100;
-		modalImg.style.transformOrigin = `${originX}% ${originY}%`;
+		initialMidPoint = { x: e.clientX - currentTranslate.x, y: e.clientY - currentTranslate.y }; //set start position
+		modalImg.style.cursor = 'grabbing'; //change cursor
+	});
+
+	modal.addEventListener('mousemove', (e) => {
+		if (currentScale <= 1.0 || !initialMidPoint) return; //only drag when zoomed in
+		e.preventDefault();
+		currentTranslate = { x: e.clientX - initialMidPoint.x, y: e.clientY - initialMidPoint.y }; //calculate new position
+		applyTransform();
+	});
+
+	modal.addEventListener('mouseup', (e) => {
+		initialMidPoint = null; //reset start position
+		modalImg.style.cursor = 'grab'; //reset cursor
+	});
+
+	modal.addEventListener('mouseleave', (e) => {
+		initialMidPoint = null; //reset start position
+	});
+
+	//mouse zoom
+	modal.addEventListener('wheel', (e) => {
+		e.preventDefault();
+		const oldScale = currentScale;
 		//scale
-		const scaleFactor = 0.1;
+		const scaleFactor = 0.2;
 		if (e.deltaY < 0) {
 			currentScale += scaleFactor; //zoom in
 		} else {
 			currentScale -= scaleFactor; //zoom out
 		}
 		currentScale = Math.max(1, Math.min(3, currentScale)); //limit zoom 1-3
-		applyTransform(); //modalImg.style.transform = `scale(${currentScale})`;
+		//origin
+		if (currentScale > 1.0) {
+			const rect = modalImg.getBoundingClientRect(); //get image size and position after transform
+			const cursorX = e.clientX - rect.left;
+			const cursorY = e.clientY - rect.top;
+			currentTranslate.x = (currentTranslate.x - cursorX) * (currentScale / oldScale) + cursorX;
+			currentTranslate.y = (currentTranslate.y - cursorY) * (currentScale / oldScale) + cursorY;
+		} else currentTranslate = { x: 0, y: 0 }; //reset translate when zoom out
+		//apply
+		applyTransform();
 	});
 
 	//double click or double touch
 	modalImg.addEventListener('dblclick', (e) => {
 		e.preventDefault();
 		if (currentScale > 1) {
+			currentTranslate = { x: 0, y: 0 }; //reset translate
+			modalImg.style.transformOrigin = 'center center'; //reset origin
 			currentScale = 1.0; //zoom out
-			currentTranslate.x = 0;
-			currentTranslate.y = 0;
 		} else {
 			const originX = e.offsetX;
 			const originY = e.offsetY;
 			modalImg.style.transformOrigin = `${originX}px ${originY}px`;
 			currentScale = 2.0; //zoom in
-			imgChange(actualBtn, currentScale); //reload image with double size
 		}
 		applyTransform();
 	});
@@ -150,24 +184,24 @@ document.addEventListener('DOMContentLoaded', () => {
 		const currentMidPoint = getMidPoint(e.touches);
 		const deltaX = currentMidPoint.x - initialMidPoint.x;
 		const deltaY = currentMidPoint.y - initialMidPoint.y;
+		initialMidPoint = currentMidPoint; //update initial mid point
 		currentTranslate.x += deltaX;
 		currentTranslate.y += deltaY;
 		if (e.touches.length > 1) { //more fingers - pinch zoom & move
-			if (initialDistance !== null) {
+			if (initialDistance !== null) { //zoom
 				const currentDistance = getDistance(e.touches);
 				const scaleFactor = currentDistance / initialDistance;
-				currentScale = currentScale * scaleFactor;
-				currentScale = Math.max(1, Math.min(3, currentScale)); //limit zoom 1-3
 				initialDistance = currentDistance;
-				initialMidPoint = currentMidPoint;
+				//scale
+				currentScale = currentScale * scaleFactor;
+				currentScale = Math.max(1, Math.min(5, currentScale)); //limit zoom 1-3 (5 for pinch zoom)
 			}
 		} else { //one finger
-			if (currentScale > 1.0) { //move
-				initialMidPoint = currentMidPoint;
-			} else { //swipe
+			if (currentScale <= 1.0) { //swipe
+				currentTranslate.y = 0; //vertical lock
 				if (Math.abs(deltaX) > Math.abs(deltaY)) { //horizontal swipe
-					currentTranslate.x = deltaX;
-					currentTranslate.y = 0;
+					if (Math.abs(deltaX) > 5) hSwipe = deltaX; //minimum distance in pixels for a swipe to be recognized
+					else hSwipe = null; //not a swipe
 				}
 			}
 		}
@@ -175,15 +209,12 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 	modalImg.addEventListener('touchend', (e) => {
 		if (e.touches.length === 0 && currentScale === 1.0) { //last finger up - swipe end
-			const deltaX = e.changedTouches[0].clientX - initialMidPoint.x;
-			const deltaY = e.changedTouches[0].clientY - initialMidPoint.y;
-			const threshold = 50; //minimum distance in pixels for a swipe to be recognized
-			if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) { //horizontal swipe
-				if (deltaX > 0) imgPrev(); //swipe right (go left)
+			if (hSwipe !== null) { //swipe detected
+				if (hSwipe > 0) imgPrev(); //swipe right (go left)
 				else imgNext(); //swipe left (go right)
+				hSwipe = null; //reset swipe
 			}
-			currentTranslate.x = 0;
-			currentTranslate.y = 0;
+			currentTranslate = { x: 0, y: 0 }; //reset translate
 			applyTransform();
 		}
 		initialDistance = getDistance(e.touches);
@@ -198,13 +229,42 @@ document.addEventListener('keydown', function (event) {
 			case 'Enter':
 				timer.toggle();
 				break;
+			case '+':
+			case 'Add':
+				currentScale += 0.5; //zoom in
+				if (currentScale > 3.0) currentScale = 3.0; //limit zoom
+				applyTransform();
+				break;
+			case '-':
+			case 'Subtract':
+				currentScale -= 0.5; //zoom out
+				if (currentScale < 1.0) currentScale = 1.0; //limit zoom
+				applyTransform();
+				break;
 			case 'ArrowUp':
-				imgFirst();
+				if (currentScale > 1.0) {
+					currentTranslate.y += 50; //move up
+					applyTransform();
+				} else imgFirst();
+				break;
+			case 'ArrowDown':
+				if (currentScale > 1.0) {
+					currentTranslate.y -= 50; //move down
+					applyTransform();
+				} else imgLast();
 				break;
 			case 'ArrowLeft':
-				imgPrev();
+				if (currentScale > 1.0) {
+					currentTranslate.x += 50; //move left
+					applyTransform();
+				} else imgPrev();
 				break;
 			case 'ArrowRight':
+				if (currentScale > 1.0) {
+					currentTranslate.x -= 50; //move right
+					applyTransform();
+				} else imgNext();
+				break;
 			case 'Space':
 			case ' ':
 				imgNext();
@@ -212,9 +272,6 @@ document.addEventListener('keydown', function (event) {
 			case 'i':
 			case 'I':
 				imgInfo();
-				break;
-			case 'ArrowDown':
-				imgLast();
 				break;
 			case 'Escape':
 				closeModal();
@@ -243,6 +300,8 @@ function closeModal() {
 	actualBtn = null;
 	modalImg.src = '';
 	modal.style.display = 'none'; //hide
+	currentScale = 1.0; //reset zoom
+	currentTranslate = { x: 0, y: 0 }; //reset translate
 	if (history.state && history.state.modalOpen) history.back();
 }
 

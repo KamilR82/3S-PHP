@@ -18,8 +18,20 @@ if(file_exists($file))
 	{
 		if(($exif = exif_read_data($file, 'IFD0', true)) !== false) //exif_read_data($file, 'IFD0')
 		{
-			echo 'Camera: ' . ($exif['IFD0']['Make'] ?? '') . ' ' . ($exif['IFD0']['Model'] ?? '') . PHP_EOL;
-			if (isset($exif['EXIF']['DateTimeOriginal'])) echo 'Date: ' . $exif['EXIF']['DateTimeOriginal'] . PHP_EOL;
+			if (isset($exif['IFD0']['Orientation'])) echo 'Orientation: ' . match($exif['IFD0']['Orientation'])
+			{
+				1 => 'Normal',
+				3 => 'Upside-down',
+				6 => "&minus;90&deg;", //90° counterclockwise
+				8 => "90&deg;", //90° clockwise
+				default => 'Unknown',
+			} . PHP_EOL;
+			if (isset($exif['IFD0']['Make']) && isset($exif['IFD0']['Model']))
+			{
+				echo 'Camera: ';
+				if(strncasecmp($exif['IFD0']['Make'], $exif['IFD0']['Model'], strlen($exif['IFD0']['Make'])) === 0) echo $exif['IFD0']['Model'] . PHP_EOL; //only model
+				else echo $exif['IFD0']['Make'] . ' ' . $exif['IFD0']['Model'] . PHP_EOL; //maker & model
+			}
 			//if (isset($exif['EXIF']['FNumber'])) echo 'Aperture: ' . $exif['EXIF']['FNumber'] . PHP_EOL;
 			if (isset($exif['COMPUTED']['ApertureFNumber'])) echo 'Aperture: ' . $exif['COMPUTED']['ApertureFNumber'] . PHP_EOL;
 			elseif (isset($exif_data['COMPUTED']['ApertureValue'])) echo 'Aperture: ' . round(pow(sqrt(2), $exif_data['COMPUTED']['ApertureValue']), 2) . PHP_EOL;
@@ -68,6 +80,17 @@ if(file_exists($file))
 				default => 'Unknown flash status (' . $exif['EXIF']['Flash'] . ')',
 			} . PHP_EOL;
 			if (isset($exif['EXIF']['FocalLength'])) echo 'Focal Length: ' . convertFraction($exif['EXIF']['FocalLength']) . ' mm' . PHP_EOL;
+			if (isset($exif['EXIF']['DateTimeOriginal'])) echo 'Date: ' . $exif['EXIF']['DateTimeOriginal'] . PHP_EOL;
+			if (isset($exif['EXIF']['GPSLatitude']) && isset($exif['EXIF']['GPSLongitude']))
+			{
+				$sign = 1;
+				if ($exif['EXIF']['GPSLatitudeRef'] == 'S') $sign = -1;
+				echo 'Latitude: ' . strval($sign * ($exif['EXIF']['GPSLatitude'][0] + ($exif['EXIF']['GPSLatitude'][1] / 60) + ($exif['EXIF']['GPSLatitude'][2] / 3600)));
+				$sign = 1;
+				if ($exif['EXIF']['GPSLongitudeRef'] == 'W') $sign = -1;
+				echo 'Longitude: ' . strval($sign * ($exif['EXIF']['GPSLongitude'][0] + ($exif['EXIF']['GPSLongitude'][1] / 60) + ($exif['EXIF']['GPSLongitude'][2] / 3600)));
+			}
+
 		}
 	}
 }
