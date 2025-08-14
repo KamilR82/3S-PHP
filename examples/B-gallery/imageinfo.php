@@ -18,6 +18,7 @@ if(file_exists($file))
 	{
 		if(($exif = exif_read_data($file, 'IFD0', true)) !== false) //exif_read_data($file, 'IFD0')
 		{
+			if (isset($exif['EXIF']['DateTimeOriginal'])) echo 'Date: ' . $exif['EXIF']['DateTimeOriginal'] . PHP_EOL;
 			if (isset($exif['IFD0']['Orientation'])) echo 'Orientation: ' . match($exif['IFD0']['Orientation'])
 			{
 				1 => 'Normal',
@@ -80,7 +81,6 @@ if(file_exists($file))
 				default => 'Unknown flash status (' . $exif['EXIF']['Flash'] . ')',
 			} . PHP_EOL;
 			if (isset($exif['EXIF']['FocalLength'])) echo 'Focal Length: ' . convertFraction($exif['EXIF']['FocalLength']) . ' mm' . PHP_EOL;
-			if (isset($exif['EXIF']['DateTimeOriginal'])) echo 'Date: ' . $exif['EXIF']['DateTimeOriginal'] . PHP_EOL;
 			if (isset($exif['EXIF']['GPSLatitude']) && isset($exif['EXIF']['GPSLongitude']))
 			{
 				$sign = 1;

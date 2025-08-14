@@ -38,16 +38,6 @@ let hSwipe = null; //horizontal swipe distance
 
 function applyTransform() {
 	modalImg.style.transform = `translate(${currentTranslate.x}px, ${currentTranslate.y}px) scale(${currentScale})`;
-	//need upscale image?
-	console.log('Transform applied. Current scale: ' + currentScale);
-	if (currentScale > 1.0 && modalImg.naturalWidth > 0 && modalImg.naturalHeight > 0) {
-		const scaledRect = modalImg.getBoundingClientRect(); //get image size and position after transform
-		const ratioW = scaledRect.width / modalImg.naturalWidth;
-		const ratioH = scaledRect.height / modalImg.naturalHeight;
-		const ratio = Math.max(ratioW, ratioH).toFixed(1); //use the larger ratio
-		console.log('Need reload? Ratio: ' + ratio);
-		if(ratio > 1.2) imgChange(actualBtn, currentScale); //if image is too small, reload it
-	}
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -88,6 +78,21 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		});
 	}
+
+	//transform done
+	modalImg.addEventListener('transitionend', (e) => {
+		if (e.propertyName === 'transform') { //scale and translate
+			console.log('Transform done. Current scale: ' + currentScale);
+			if (currentScale > 1.0 && modalImg.naturalWidth > 0 && modalImg.naturalHeight > 0) {
+				const scaledRect = modalImg.getBoundingClientRect(); //get image size and position after transform
+				const ratioW = scaledRect.width / modalImg.naturalWidth;
+				const ratioH = scaledRect.height / modalImg.naturalHeight;
+				const ratio = Math.max(ratioW, ratioH).toFixed(1); //use the larger ratio
+				console.log('Need reload? Ratio: ' + ratio);
+				if (ratio > 1.25) imgChange(actualBtn, currentScale); //if image is too small, reload it
+			}
+		}
+	});
 
 	//mouse drag
 	modalImg.addEventListener('mousedown', (e) => {
@@ -142,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		e.preventDefault();
 		if (currentScale > 1) {
 			currentTranslate = { x: 0, y: 0 }; //reset translate
-			modalImg.style.transformOrigin = 'center center'; //reset origin
 			currentScale = 1.0; //zoom out
 		} else {
 			const originX = e.offsetX;
@@ -288,9 +292,9 @@ window.addEventListener('popstate', function (event) { /* history back */
 });
 
 function openModal(btn) {
+	fullscreen(modal);
 	history.pushState({ modalOpen: true }, 'Image Modal Open', '#modal');
 	modal.style.display = 'grid'; //show
-	fullscreen(modal);
 	imgChange(btn);
 }
 
@@ -343,8 +347,8 @@ function imgChange(element, scale = 1.0) {
 	//try to load image
 	//loadImg(src, modalImg) //load image directly (full size)
 	if (scale === 1.0) modalImg.style.transform = ''; //reset zoom
-	const w = modal.clientWidth * scale; //document.documentElement.clientWidth; //viewport width
-	const h = modal.clientHeight * scale; //document.documentElement.clientHeight; //viewport height
+	const w = screen.width * scale; //modal.clientWidth * scale; //document.documentElement.clientWidth; //viewport width
+	const h = screen.height * scale; //modal.clientHeight * scale; //document.documentElement.clientHeight; //viewport height
 	loadImg('thumbnail.php?w=' + w + '&h=' + h + '&path=' + src, modalImg) //load image directly (size by demand)
 		.then(loadedImage => { //done
 			console.log('Image Done.');
@@ -424,9 +428,8 @@ function imgDownload() {
 		const src = actualBtn.getAttribute('data-src');
 		if (!src) return;
 
-		const maxWorH = 2000; //max W or H
 		const link = document.createElement('a'); //hidden link
-		link.href = 'thumbnail.php?dl=true&w=' + maxWorH + '&h=' + maxWorH + '&path=' + src;
+		link.href = 'thumbnail.php?dl=true&path=' + src;
 		link.download = getFilenameFromPath(src);
 		document.body.appendChild(link);
 		link.click();
@@ -450,26 +453,39 @@ function updateProgress(percentage) {
 function timerStart() {
 	const slideshow = document.getElementById('slideshow'); //button (img)
 	if (slideshow) slideshow.src = 'images/pause.ico';
+
+	const progressbar = document.getElementById('progressbar');
+	if (progressbar) progressbar.style.visibility = 'visible';
+
 	const timerBar = document.getElementById('progress');
 	if (timerBar) {
 		timerBar.max = 100;
 		timerBar.value = 0;
 	}
+
 	requestWakeLock();
 }
 
 function timerStop() {
 	const slideshow = document.getElementById('slideshow'); //button (img)
 	if (slideshow) slideshow.src = 'images/play.ico';
+
+	const progressbar = document.getElementById('progressbar');
+	if (progressbar) progressbar.style.visibility = 'hidden';
+
 	const timerBar = document.getElementById('progress');
 	if (timerBar) {
 		timerBar.max = 100;
 		timerBar.value = 0;
 	}
+
 	releaseWakeLock();
 }
 
 function timerPause() {
+	const progressbar = document.getElementById('progressbar');
+	if (progressbar) progressbar.style.visibility = 'visible';
+
 	const timerBar = document.getElementById('progress');
 	if (timerBar) {
 		timerBar.removeAttribute('max');
