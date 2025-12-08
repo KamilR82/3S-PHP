@@ -7,7 +7,7 @@ require_once('singleton.php');
 App::Protect(__FILE__);
 
 //DEFAULT CONSTANTS
-define('DB_SOCKED', '/run/mysqld/mysqld10.sock'); //MariaDB10 / NULL=MariaDB5
+define('DB_SOCKED', NULL);
 define('DB_HOST', NULL); //localhost
 define('DB_PORT', NULL); //3306
 define('DB_TIMEOUT', NULL); //seconds for TCP/IP connect
@@ -53,7 +53,7 @@ class DataBase extends Singleton
 		}
 	}
 
-    public static function Connect(?string $db_database = null, ?string $db_username = null, ?string $db_password = null, ?string $db_host = null, ?int $db_port = null, ?string $db_socket = '/run/mysqld/mysqld10.sock', ?int $timeout = null): void
+    public static function Connect(?string $db_database = null, ?string $db_username = null, ?string $db_password = null, ?string $db_host = null, ?int $db_port = null, ?string $db_socket = null, ?int $timeout = null): void
     {
 		if(Str::IsEmpty($db_database) || Str::IsEmpty($db_username) || Str::IsEmpty($db_password)) App::Die(ResponseCode::Unauthorized, 'DB Error: Missing access data! Set database, username and password.');
 
@@ -90,7 +90,7 @@ class DataBase extends Singleton
 		{
 			foreach($data as $column => $value) $str .= '`'.$column.'`='.self::Convert($value) . ', ';
 		}
-		return rtrim($str, ','); //remove last comma
+		return rtrim($str, ', '); //remove last comma
 	}
 
 	private static function Implode(array $data): string //array to db string (space separated)
