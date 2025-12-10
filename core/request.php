@@ -142,7 +142,7 @@ class Request extends Singleton //Uniform Resource Locator
 		return self::$method;
 	}
 
-	public static function GetParam(string $parameter, bool $raw = false): ?string
+	public static function GetParam(string $parameter, bool $raw = false): null|int|float|string|array
 	{
 		if($raw) return $_REQUEST[$parameter] ?? null;
 		else return self::$params[$parameter] ?? null; //after ParseExpected
