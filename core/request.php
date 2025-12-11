@@ -142,6 +142,20 @@ class Request extends Singleton //Uniform Resource Locator
 		return self::$method;
 	}
 
+	public static function GetParams(array|string|null ...$keys): array //after ParseExpected
+	{
+		if (empty($keys) || ($keys === [null])) return self::$params; //return all params
+
+		if (count($keys) === 1 && is_array($keys[0])) $keys = $keys[0]; //$keys is array
+
+		$result = array_fill_keys($keys, null); //null default values
+		foreach ($keys as $key)
+		{
+			if (array_key_exists($key, self::$params)) $result[$key] = self::$params[$key];
+		}
+		return $result; //return requested parameters
+	}
+
 	public static function GetParam(string $parameter, bool $raw = false): null|int|float|string|array
 	{
 		if($raw) return $_REQUEST[$parameter] ?? null;
