@@ -7,7 +7,7 @@ declare(strict_types = 1);
 
 class Table extends Element
 {
-	private int $columns = 0; //counter
+	private array $columns = []; //column names index map
 
 	private ?object $caption = null;
 	private ?object $colgroup = null;
@@ -74,7 +74,7 @@ class Table extends Element
 		{
 			if($this->colgroup) $this->colgroup->clear();
 			if($this->thead) $this->thead->clear();
-			$this->columns = 0;
+			$this->columns = [];
 		}
 		if($body && $this->tbody) $this->tbody->clear();
 		if($foot && $this->tfoot) $this->tfoot->clear();
@@ -93,10 +93,9 @@ class Table extends Element
 		$this->colgroup->open(new Element('col', ['span' => $span, 'class' => $class]));
 	}
 
-	public function head(array $values = []): void
+	public function head(array $values): void
 	{
-		$this->columns = max($this->columns, count($values)); //set columns counter
-
+		//open head
 		if(!$this->thead)
 		{
 			$this->thead = new Element('thead');
@@ -105,15 +104,20 @@ class Table extends Element
 		}
 		else $this->thead->activate(); //close prev row (or any if is open)
 
-		//add row + data
-		$this->thead->open(new Element('tr', true)); //add row
-		foreach($values as $value)
+		//add row
+		$this->thead->open(new Element('tr', true));
+		
+		//add data
+		$index = 0; //counter
+		foreach($values as $name => $value)
 		{
+			if(is_string($name)) $this->columns[$name] = $index++; //column names index map
+
 			if(is_array($value)) //sortable
 			{
 				$mark = null;
 				$label = $value['label'] ?? $value['l'] ?? $value[0] ?? ''; //label
-				$column = $value['column'] ?? $value['c'] ?? $value[1] ?? ''; //column
+				$column = $value['column'] ?? $value['c'] ?? $value[1] ?? ''; //column name
 				$attrib = $value['attrib'] ?? $value['a'] ?? $value[2] ?? ''; //attributes
 				if(!is_array($attrib)) $attrib = null; //no attributes
 				if(Str::IsEmpty($column)) $column = $label;
@@ -137,8 +141,9 @@ class Table extends Element
 		}
 	}
 
-	public function body(array $values = []): void
+	public function body(object|array $values): void
 	{
+		//open body
 		if(!$this->tbody)
 		{
 			$this->tbody = new Element('tbody');
@@ -147,20 +152,32 @@ class Table extends Element
 		}
 		else $this->tbody->activate(); //close prev row (or any if is open)
 
-		//add row + data
-		$this->tbody->open(new Element('tr', true)); //add row
-		if($this->columns)
+		//add row
+		$this->tbody->open(new Element('tr', true));
+		
+		//add data
+		if (is_object($values)) $values = get_object_vars($values); //try convert object to array
+		if(array_is_list($values)) foreach($values as $value) $this->tbody->open(new Element('td', $value));
+		else
 		{
-			for($i = 0; $i < $this->columns; $i++) $this->tbody->open(new Element('td', $values[$i] ?? ''));
-		}
-		else //columns counter not set
-		{
-			foreach($values as $value) $this->tbody->open(new Element('td', $value));
+			$row = [];
+			foreach($values as $key => $val)
+			{
+				if (is_string($key)) //set by name
+				{
+					if(isset($this->columns[$key])) $row[$this->columns[$key]] = $val; //key exists (replace)
+					elseif(count($this->columns) === 0) $row[] = $val; //add (only if map is empty)
+				}
+				elseif (is_int($key)) $row[$key] = $val; //set by index (replace)
+				else $row[] = $val; //add
+			}
+			foreach($row as $data) $this->tbody->open(new Element('td', $data));
 		}
 	}
 
-	public function foot(array $values = []): void
+	public function foot(object|array $values): void
 	{
+		//open foot
 		if(!$this->tfoot)
 		{
 			$this->tfoot = new Element('tfoot');
@@ -169,15 +186,27 @@ class Table extends Element
 		}
 		else $this->tfoot->activate(); //close prev row (or any if is open)
 
-		//add row + data
-		$this->tfoot->open(new Element('tr', true)); //add row
-		if($this->columns)
+		//add row
+		$this->tfoot->open(new Element('tr', true));
+
+		//add data
+		if (is_object($values)) $values = get_object_vars($values); //try convert object to array
+		if(array_is_list($values)) foreach($values as $value) $this->tfoot->open(new Element('td', $value));
+		else
 		{
-			for($i = 0; $i < $this->columns; $i++) $this->tfoot->open(new Element('td', $values[$i] ?? ''));
+			$row = [];
+			foreach($values as $key => $val)
+			{
+				if (is_string($key)) //set by name
+				{
+					if(isset($this->columns[$key])) $row[$this->columns[$key]] = $val; //key exists (replace)
+					elseif(count($this->columns) === 0) $row[] = $val; //add (only if map is empty)
+				}
+				elseif (is_int($key)) $row[$key] = $val; //set by index (replace)
+				else $row[] = $val; //add
+			}
+			foreach($row as $data) $this->tfoot->open(new Element('td', $data));
 		}
-		else //columns counter not set
-		{
-			foreach($values as $value) $this->tfoot->open(new Element('td', $value));
-		}
+
 	}
 }
