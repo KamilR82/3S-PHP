@@ -101,6 +101,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 			else $obj->attrib(['data-tag-caller' => ($last['class']??'') . ($last['type']??'') . $last['function']]); //class & function
 			$obj->attrib(['data-tag-id' => strval($obj)]); //element object id
 		}
+		else $obj->attrib([null => null]); //workaround for remove (Error: Tag not found!) when debug mode is disabled. WTF?
 
 		$obj->parent = $this->active; //set parent to child
 		array_push($this->active->container, $obj); //add child

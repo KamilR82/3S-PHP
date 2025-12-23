@@ -141,7 +141,7 @@ class Table extends Element
 		}
 	}
 
-	public function body(object|array $values): void
+	public function body(array $values): void
 	{
 		//open body
 		if(!$this->tbody)
@@ -156,7 +156,6 @@ class Table extends Element
 		$this->tbody->open(new Element('tr', true));
 		
 		//add data
-		if (is_object($values)) $values = get_object_vars($values); //try convert object to array
 		if(array_is_list($values)) foreach($values as $value) $this->tbody->open(new Element('td', $value));
 		else
 		{
@@ -175,7 +174,7 @@ class Table extends Element
 		}
 	}
 
-	public function foot(object|array $values): void
+	public function foot(array $values): void
 	{
 		//open foot
 		if(!$this->tfoot)
@@ -190,7 +189,6 @@ class Table extends Element
 		$this->tfoot->open(new Element('tr', true));
 
 		//add data
-		if (is_object($values)) $values = get_object_vars($values); //try convert object to array
 		if(array_is_list($values)) foreach($values as $value) $this->tfoot->open(new Element('td', $value));
 		else
 		{
@@ -207,6 +205,18 @@ class Table extends Element
 			}
 			foreach($row as $data) $this->tfoot->open(new Element('td', $data));
 		}
-
+	}
+	
+	public function db(object $result): void
+	{
+		//head
+		if(!$this->thead) //only if not exists
+		{
+			$fields = $result->fetch_fields();
+			$this->head(array_column($fields, 'name'));
+		}
+		
+		//body
+		while($row = $result->fetch_assoc()) $this->body($row); //while($row = $result->fetch_object()) $this->body(get_object_vars($row));
 	}
 }
