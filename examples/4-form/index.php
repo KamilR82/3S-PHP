@@ -19,7 +19,7 @@ $form->autocomplete(false); //disable autocomplete
 $form->fieldset(true); //add first fieldset
 $form->legend('Form 2 - Fieldset 1');
 $form->label('Email', 'email');
-$form->password('email', required: true);
+$form->email('email', required: true);
 $form->label('Password', 'password');
 $form->password('password', required: true);
 $form->reset('Clear'); //clear button
@@ -29,7 +29,7 @@ $form->fieldset(false); //close fieldset
 $form->fieldset(true); //add second fieldset
 $form->legend('Form 2 - Fieldset 2');
 $form->label('Email', 'email');
-$form->password('email', required: true);
+$form->email('email', required: true);
 $form->label('Password', 'password');
 $form->password('password', required: true);
 $form->submit('Send'); //send button
