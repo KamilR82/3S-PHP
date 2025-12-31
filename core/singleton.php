@@ -27,7 +27,7 @@ define('COOKIE_DOMAIN', null); //Cookie domain, for example 'www.php.net'. To ma
 define('COOKIE_SECURE', true); //If true cookie will only be sent over secure connections.
 define('COOKIE_HTTPONLY', false); //This means that the cookie won't be accessible by scripting languages, such as JavaScript. (this reduce identity theft through XSS attacks)
 
-if(!defined('CONFIG_FILE')) define('CONFIG_FILE', './config.env'); //supported config file types .ini .env .php
+if(!defined('CONFIG_FILE')) define('CONFIG_FILE', DIR_ROOT.'/config.php'); //supported config file types .ini .env .php
 
 //Traits
 trait EnumToArray
@@ -162,6 +162,19 @@ class App extends Singleton
 		if(self::Env('APP_BUFFERING')) ob_start(); //turn on output buffering
 		else if(ob_get_level()) ob_end_clean(); //turn off output buffering
 
+		//fatal error handler (Call to undefined function etc.)
+		set_exception_handler(function (Throwable $e)
+		{
+			if(function_exists('rem')) rem(get_class($e) . ': ' . $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine());
+			else
+			{
+				while(ob_get_level()) ob_end_clean(); //clear output
+				http_response_code(500);
+				echo get_class($e) . ': ' . $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine();
+				exit;
+			}
+		});
+
 		//session
 		$options['lifetime'] = self::Env('SESSION_LIFETIME');
 		if($options['lifetime'] > 0) $options['lifetime'] += time(); 
@@ -179,19 +192,44 @@ class App extends Singleton
 		}
 	}
 
+	public static function GetCaller(): ?array
+	{
+		$trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS); //arguments not needed
+		return $trace[count($trace) - 1] ?? null; //end($trace) ?: null;
+	}
+
+	public static function GetCallerStr(): string
+	{
+		$root = self::GetCaller();
+		if($root)
+		{
+			$filename = basename($root['file'] ?? '<class destroy>');
+			if(isset($root['line'])) $filename .= ':' . $root['line'];
+			return $filename;
+		}
+		return '';
+	}
+
 	public static function Die(ResponseCode $code = ResponseCode::Nothing, string $string = ''): void
 	{
-		if($code->value && !self::Env('APP_DEBUG'))
+		if($code->value && self::Env('APP_DEBUG'))
 		{
-			http_response_code($code->value);
-			$string = 'Error '.$code->value.': '.$string;
+			$string = 'Error: '.$code->value.' '.$code->name.' - '.$string;
+			$string .= '<pre>' . print_r(debug_backtrace(), true) . '</pre>';
 		}
-		if($code->value >= 400) die($string);
+		if($code->value >= 400) http_response_code($code->value);
+		die($string);
 	}
 
 	public static function Protect(string $filename): void //protection against running script files individually
 	{
 		if(basename($_SERVER['SCRIPT_NAME']) === basename($filename)) self::Die(ResponseCode::Forbidden, 'Forbidden!');
+	}
+
+	public static function Reload(bool $remove_params = true): void //refresh page
+	{
+		header('Location: '.Request::GetURI($remove_params));
+		exit;
 	}
 
 	public static function Load(string $file): array|false

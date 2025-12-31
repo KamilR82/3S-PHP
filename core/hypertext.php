@@ -13,7 +13,7 @@ define('APP_PRETTY_PRINT', true); //pretty output html code
 class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element of HTML DOM (data object model)
 {
 	private string $tag = ''; //name ('' = only text, ! = html comment)
-	private object $active; //active element for add child (pointer)
+	private object $active; //pointer to active element for add child
 	private ?object $parent = null; //parent element or none
 
 	private ?bool $flag = null; //false = abstract close element / true = keep open for add child elements
@@ -47,7 +47,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 			{
 				if($val->parent) //child exists in DOM -> move (same object can exist only once)
 				{
-					if(defined('HARD_DEBUG_MODE')) echo('<!-- = '.$val.' = '.$val->parent.' <-> '.$this.' -->'.PHP_EOL); //DEBUG - Move Tag
+					if(defined('HARD_DEBUG_MODE')) echo('<!-- '.App::GetCallerStr().' = '.$val.' = '.$val->parent.' -> '.$this.' -->'.PHP_EOL); //DEBUG - Move Tag
 
 					$key = array_search($val, $val->parent->container, true); //find in parent container
 					if($key !== false) unset($val->parent->container[$key]); //remove from parent container
@@ -90,15 +90,14 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 			$obj->active = $obj; //set temporary back to self active
 		}
 
-		if(defined('HARD_DEBUG_MODE')) echo('<!-- + '.$this->active.' -> '.$obj.' -->'.PHP_EOL); //DEBUG - Open Tag
+		if(defined('HARD_DEBUG_MODE')) echo('<!-- '.App::GetCallerStr().' + '.$this->active.' -> '.$obj.' -->'.PHP_EOL); //DEBUG - Open Tag
 		if(is_null($this->active->container)) throw new \Exception('Element::open - Parent is singular. Expected paired tag.');
 
 		if(App::Env('APP_DEBUG')) //add tag attribute `data-tag-caller` and `data-tag-id`
 		{
-			$backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS); //arguments not needed
-			$last = end($backtrace); //array last item
-			if(isset($last['file'])) $obj->attrib(['data-tag-caller' => basename($last['file']).':'.($last['line'])]); //__destruct has no file & line
-			else $obj->attrib(['data-tag-caller' => ($last['class']??'') . ($last['type']??'') . $last['function']]); //class & function
+			$caller = App::GetCaller();
+			if(isset($caller['file'])) $obj->attrib(['data-tag-caller' => basename($caller['file']).':'.($caller['line'])]); //__destruct has no file & line
+			else $obj->attrib(['data-tag-caller' => ($caller['class']??'') . ($caller['type']??'') . $caller['function']]); //class & function
 			$obj->attrib(['data-tag-id' => strval($obj)]); //element object id
 		}
 		else $obj->attrib([null => null]); //workaround for remove (Error: Tag not found!) when debug mode is disabled. WTF?
@@ -115,9 +114,12 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function close(string $tag = ''): object //close child 
 	{
-		if(defined('HARD_DEBUG_MODE')) echo('<!-- / '.$this->active.' <- `'.$tag.'` -->'.PHP_EOL); //DEBUG - Close Tag
-
 		$parent = $this->active->parent($tag); //try to close
+		if(defined('HARD_DEBUG_MODE')) //DEBUG - Close Tag
+		{
+			if($parent) echo('<!-- '.App::GetCallerStr().' / '.$parent.' <- '.$this->active.' -->'.PHP_EOL); //Close Tag
+			else echo('<!-- '.App::GetCallerStr().' X '.$this->active.' <- `'.$tag.'` -->'.PHP_EOL); //Tag to close not found
+		}
 		if($parent) $this->active = $parent; //parent tag found
 		else array_push($this->active->container, new Element('!', 'Error: Tag not found! (`'.$tag.'` not open)')); //error as html comment
 		return $this->active;
@@ -169,7 +171,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 		{
 			if($obj instanceof Element && $obj->is($tag, $id))
 			{
-				if(defined('HARD_DEBUG_MODE')) echo('<!-- - '.$this.' <- '.$obj.' -->'.PHP_EOL); //DEBUG - remove tag
+				if(defined('HARD_DEBUG_MODE')) echo('<!-- '.App::GetCallerStr().' - '.$this.' <- '.$obj.' -->'.PHP_EOL); //DEBUG - remove tag
 				unset($this->container[$key]);
 			}
 		}
@@ -304,27 +306,27 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function __call($name, $data): ?object //html tag function missing
 	{
-		if(strcasecmp($name, 't') == 0) return $this->active->add(implode('', ...$data)); //without tag name is only text
-		else return $this->active->add(new Element($name, ...$data)); //create it :)
+		if(strcasecmp($name, 't') == 0) return $this->add(implode('', ...$data)); //without tag name is only text
+		else return $this->add(new Element($name, ...$data)); //create it :)
 	}
 
 	//custom tag aliases
 
 	function href(?string $href = null, mixed ...$data): object //a hyperlink
 	{
-		return $this->active->add(new Element('a', ['href' => Request::GetFileName($href)], ...$data));
+		return $this->add(new Element('a', ['href' => Request::GetFileName($href)], ...$data));
 	}
 
 	function click(?string $onclick = null, mixed ...$data): object //a onclick
 	{
-		return $this->active->add(new Element('a', ['href' => 'javascript:;', 'onclick' => $onclick], ...$data)); //run only onclick javascript
+		return $this->add(new Element('a', ['href' => 'javascript:;', 'onclick' => $onclick], ...$data)); //run only onclick javascript
 	}
 
 	function img(string|array $src, string|array $alt = [], mixed ...$data): object //singular - image
 	{
 		if(is_string($src)) $src = array('src' => $src);
 		if(is_string($alt)) $alt = array('alt' => $alt);
-		return $this->active->add(new Element(__FUNCTION__, $src, $alt, ...$data));
+		return $this->add(new Element(__FUNCTION__, $src, $alt, ...$data));
 	}
 }
 

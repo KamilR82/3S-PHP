@@ -10,7 +10,7 @@ App::Protect(__FILE__);
 define('APP_LANGUAGE', 'en'); //default language (if a key doesn’t exist in the set variant, always fall back to the default language file)
 define('APP_LOCALE', ''); //geographical location helps control how content is displayed (currency and date formatting) //'' = set from the system's regional/language settings
 
-define('PATH_LOCALE', 'locales/');
+if(!defined('PATH_LOCALE')) define('PATH_LOCALE', DIR_ROOT.'/locales/');
 
 define('TRANSLATE_PREFIX', '_');
 define('TRANSLATE_POSTFIX', '');
@@ -143,7 +143,7 @@ class Language extends Singleton
 			}
 		}
 		//not found
-		return $default ?: (App::Env('APP_DEBUG') ? "?{$id}?" : '???');
+		return $default ?: "?{$id}?";
 	}
 
 	public static function Translate(string $text, string $prefix = TRANSLATE_PREFIX, string $postfix = TRANSLATE_POSTFIX): string //translate string

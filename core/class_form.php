@@ -17,8 +17,11 @@ class Form extends Element
 	{
 		parent::__construct(strtolower(__CLASS__), false, $attrib);
 		$this->attrib['method'] = $method->value; //convert object to string
-		if(strcasecmp($this->attrib['method'], 'post') == 0) $this->attrib['enctype'] = 'multipart/form-data'; //this value is necessary if the user will upload a file through the form
-		$this->hidden('token', Request::GetToken()); //token
+		if(strcasecmp($this->attrib['method'], 'post') == 0) //post
+		{
+			if(!array_key_exists('enctype',  $this->attrib)) $this->attrib['enctype'] = 'multipart/form-data'; //this value is necessary if the user will upload a file through the form
+			$this->hidden('token', Request::GetToken()); //token
+		}
 	}
 
 //attributes
@@ -52,7 +55,7 @@ class Form extends Element
 	}
 
 //html tags
-
+/*
 	public function fieldset(bool $open, mixed ...$attrib): object
 	{
 		return $this->add(new Element(__FUNCTION__, $open, $attrib));
@@ -62,7 +65,7 @@ class Form extends Element
 	{
 		return $this->add(new Element(__FUNCTION__, $caption, $attrib));
 	}
-
+*/
 	public function label(string $caption, ?string $for = null, ?string $tooltip = null, bool $colon = true, mixed ...$attrib): object
 	{ //label can also be bound to an element by placing the element inside the <label> element, then no need bind to inout id
 		if($colon) $caption .= match(mb_substr($caption, -1)) {'.','!','?',':',';','>' => '', default => ':',}; //add colon
@@ -76,17 +79,12 @@ class Form extends Element
 
 	public function reset(string $caption = 'Reset', string $name = 'clear', mixed ...$attrib): object
 	{ //JS function reset() does not work if form contains any field with attribute name='reset' !!!
-		return $this->add(new Element('input', ['type'=>'reset', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>"this.closest('form').reset();"], $attrib)); //'this.parentNode.parentNode.reset();'
+		return $this->add(new Element('input', ['type'=>'reset', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>"this.closest('form').reset();"], $attrib));
 	}
 
 	public function reload(string $caption = 'Reload', string $name = 'reload', string $location = '', mixed ...$attrib): object
 	{
 		return $this->add(new Element('input', ['type'=>'button', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>'window.location=\''.Request::GetFileName($location).'\';'], $attrib));
-	}
-
-	public function button(string $caption = 'Press', string $name = 'press', ?string $onclick = null, mixed ...$attrib): object
-	{
-		return $this->add(new Element('input', ['type'=>'button', 'name'=>$name, 'id'=>$name, 'value'=>$caption, 'onclick'=>$onclick], $attrib)); //"navigator.clipboard.writeText('".$value."');" etc.
 	}
 
 	public function file(string $name = 'file', string $accept = 'text/xml', mixed ...$attrib): object

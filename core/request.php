@@ -39,7 +39,7 @@ class Request extends Singleton //Uniform Resource Locator
 		if(!empty(self::$languages)) Language::Set(self::$languages); //try to set language
 
 		//PROTECTION against DOUBLE POSTING FORM (back button, more tabs, refresh, ...)
-		if(self::$method === 'POST' && isset($_POST['token']))
+		if(self::IsPost()) //if(self::$method === 'POST' && isset($_POST['token']))
 		{
 			if(isset($_SESSION['token']))
 			{
@@ -132,9 +132,9 @@ class Request extends Singleton //Uniform Resource Locator
 		return self::$clientip;
 	}
 
-	public static function GetURI(): string
+	public static function GetURI(bool $remove_params = false): string
 	{
-		return self::$request; //whole request
+		return $remove_params ? strtok(self::$request, '?') : self::$request;
 	}
 
 	public static function GetMethod(): string
@@ -142,17 +142,20 @@ class Request extends Singleton //Uniform Resource Locator
 		return self::$method;
 	}
 
-	public static function GetParams(array|string|null ...$keys): array //after ParseExpected
+	public static function GetParams(bool $emptyStringsToNull = false, array|string|null ...$keys): array //after ParseExpected
 	{
-		if (empty($keys) || ($keys === [null])) return self::$params; //return all params
+		if(empty($keys) || ($keys === [null])) return self::$params; //return all params
 
-		if (count($keys) === 1 && is_array($keys[0])) $keys = $keys[0]; //$keys is array
+		if(count($keys) === 1 && is_array($keys[0])) $keys = $keys[0]; //$keys is array
 
 		$result = array_fill_keys($keys, null); //null default values
-		foreach ($keys as $key)
+		foreach($keys as $key)
 		{
-			if (array_key_exists($key, self::$params)) $result[$key] = self::$params[$key];
+			if(array_key_exists($key, self::$params)) $result[$key] = self::$params[$key];
 		}
+		
+		if($emptyStringsToNull) $result = array_map(fn($value) => $value === '' ? null : $value, $result);
+		
 		return $result; //return requested parameters
 	}
 
@@ -168,7 +171,7 @@ class Request extends Singleton //Uniform Resource Locator
 		else return isset(self::$params[$parameter]); //after ParseExpected
 	}
 
-	public static function IsPost(?string $parameter = 'submit'): bool
+	public static function IsPost(?string $parameter = 'token'): bool //don't change default value
 	{
 		if(Any::IsEmpty($parameter)) return self::$method === 'POST';
 		else return isset($_POST[$parameter]);
