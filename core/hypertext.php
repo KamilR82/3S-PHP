@@ -100,7 +100,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 			else $obj->attrib(['data-tag-caller' => ($caller['class']??'') . ($caller['type']??'') . $caller['function']]); //class & function
 			$obj->attrib(['data-tag-id' => strval($obj)]); //element object id
 		}
-		else $obj->attrib([null => null]); //workaround for remove (Error: Tag not found!) when debug mode is disabled. WTF?
+		//else $obj->attrib([null => null]); //workaround for remove (Error: Tag not found!) when debug mode is disabled. WTF?
 
 		$obj->parent = $this->active; //set parent to child
 		array_push($this->active->container, $obj); //add child
@@ -339,6 +339,7 @@ class Page extends Singleton
 	private static array $open_tags = []; //control strings
 
 	private static object $html; //master element
+	private static object $body; //body element
 	private static bool $output = true; //true = add tags to dom, false = only return object
 
 	private static float $starttime = 0; //loading page start time
@@ -369,8 +370,13 @@ class Page extends Singleton
 		head(false);
 
 		//body
-		body(true);
+		self::$body = body(true);
 		if(method_exists(__CLASS__, 'Begin')) self::Begin();
+	}
+
+	public static function Body(): ?object
+	{
+		return self::$body;
 	}
 
 	public static function Title(?string $title = null, bool $only = false): string //$only = don't append app name

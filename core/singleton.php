@@ -98,8 +98,8 @@ enum ResponseCode: int
 //Parent Class
 interface SingletonInterface
 {
-	public static function Initialize(): Singleton;
-	public static function Instance(): ?Singleton;
+	public static function Initialize(...$args): static;
+	public static function Instance(): ?static;
 }
 
 /** @phpstan-consistent-constructor */
@@ -118,7 +118,7 @@ abstract class Singleton implements SingletonInterface
 		throw new \Exception('Cannot unserialize singleton'); // Singletons should not be restorable from strings
 	}
 
-	final public static function Initialize(...$args): Singleton
+	final public static function Initialize(...$args): static
 	{
 		$subclass = static::class;
 		if(!isset(self::$instances[$subclass]))
@@ -130,7 +130,7 @@ abstract class Singleton implements SingletonInterface
 		return self::$instances[$subclass];
 	}
 
-	final public static function Instance(): ?Singleton
+	final public static function Instance(): ?static
 	{
 		return self::$instances[static::class] ?? null;
 	}

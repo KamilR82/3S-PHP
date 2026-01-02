@@ -54,7 +54,7 @@ class Userlogin extends Singleton
 
 		//get user by session
 		$query = "SELECT `id`, TRIM(CONCAT_WS(' ', `first`, `last`)) AS `fullname` FROM `user` WHERE session = ? LIMIT 1";
-		if(!$result = DataBase::Execute($query, [App::GetSession()])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+		if(!$result = DataBase::Execute($query, [App::GetSession()])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 		if($result->num_rows)
 		{
 			self::$id = intval(DataBase::GetResultValue('id'));
@@ -62,7 +62,7 @@ class Userlogin extends Singleton
 
 			//save last activity
 			$query = "UPDATE `user` SET `activity` = NOW() WHERE `id` = ? LIMIT 1";
-			if(!DataBase::Execute($query, [self::$id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+			if(!DataBase::Execute($query, [self::$id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 		}
 	}
 
@@ -80,7 +80,7 @@ class Userlogin extends Singleton
 		if(Str::IsEmpty($login) || Str::IsEmpty($password)) return;
 
 		$query = "SELECT `id`, `password` FROM `user` WHERE `login` LIKE ? LIMIT 1";
-		if(!$result = DataBase::Execute($query, [$login])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+		if(!$result = DataBase::Execute($query, [$login])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 		if($result->num_rows)
 		{
 			$id = DataBase::GetResultValue('id');
@@ -90,14 +90,14 @@ class Userlogin extends Singleton
 				if(password_verify($password, $hash))
 				{
 					$query = "UPDATE `user` SET `activity` = NOW(), `session` = ? WHERE `id` = ? LIMIT 1";
-					if(!DataBase::Execute($query, [App::GetSession(), $id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+					if(!DataBase::Execute($query, [App::GetSession(), $id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 					Request::Redirect(); //user data load after redirect
 				}
 			}
 		}
 		//somethings wrong
 		sleep(1); //wait a second
-		Page::MsgBox(Language::Get('wrong_login'), MsgBox_Type::Warning);
+		Page::Toast(Language::Get('wrong_login'), Toast_Type::Warning);
 	}
 
 	public static function Password(string $old, string $new, string $retry): bool
@@ -105,7 +105,7 @@ class Userlogin extends Singleton
 		if(Str::NotEmpty($old) && Str::NotEmpty($new) && Str::NotEmpty($retry))
 		{
 			$query = "SELECT `password` FROM `user` WHERE `id` = ? LIMIT 1";
-			if(!$result = DataBase::Execute($query, [self::$id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+			if(!$result = DataBase::Execute($query, [self::$id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 			if($result->num_rows)
 			{
 				$hash = DataBase::GetResultValue();
@@ -115,21 +115,21 @@ class Userlogin extends Singleton
 					{
 						$hash = password_hash($new, PASSWORD_DEFAULT);
 						$query = "UPDATE `user` SET `password` = ? WHERE `id` = ? LIMIT 1";
-						if(!DataBase::Execute($query, [$hash, self::$id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+						if(!DataBase::Execute($query, [$hash, self::$id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 						elseif(DataBase::AffectedRows())
 						{
-							Page::MsgBox(Language::Get('password_changed'), MsgBox_Type::Success);
+							Page::Toast(Language::Get('password_changed'), Toast_Type::Success);
 							return true;
 						}
-						else Page::MsgBox(Language::Get('password_not_changed'), MsgBox_Type::Alert);
+						else Page::Toast(Language::Get('password_not_changed'), Toast_Type::Alert);
 					}
-					else Page::MsgBox(Language::Get('password_not_equal'), MsgBox_Type::Warning);					
+					else Page::Toast(Language::Get('password_not_equal'), Toast_Type::Warning);					
 				}
-				else Page::MsgBox(Language::Get('wrong_password'), MsgBox_Type::Alert);
+				else Page::Toast(Language::Get('wrong_password'), Toast_Type::Alert);
 			}
-			else Page::MsgBox(Language::Get('wrong_account'), MsgBox_Type::Warning);
+			else Page::Toast(Language::Get('wrong_account'), Toast_Type::Warning);
 		}
-		else Page::MsgBox(Language::Get('password_empty'), MsgBox_Type::Alert);
+		else Page::Toast(Language::Get('password_empty'), Toast_Type::Alert);
 
 		return false;
 	}
@@ -141,22 +141,22 @@ class Userlogin extends Singleton
 			if(is_null($id)) $id = self::$id;
 
 			$query = "SELECT CONV(karta, 16, 10) FROM `user` WHERE id = ? LIMIT 1";
-			if(!$result = DataBase::Execute($query, [self::$id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+			if(!$result = DataBase::Execute($query, [self::$id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 			if($result->num_rows)
 			{
 				$karta = DataBase::GetResultValue();
 				$hash = password_hash($karta, PASSWORD_DEFAULT);
 				$query = "UPDATE `user` SET `password` = ? WHERE `id` = ? LIMIT 1";
-				if(!DataBase::Execute($query, [$hash, $id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+				if(!DataBase::Execute($query, [$hash, $id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 				elseif(DataBase::AffectedRows())
 				{
-					Page::MsgBox(Language::Get('password_reset'), MsgBox_Type::Success);
+					Page::Toast(Language::Get('password_reset'), Toast_Type::Success);
 					return true;
 				}
-				else Page::MsgBox(Language::Get('password_not_changed'), MsgBox_Type::Alert);
+				else Page::Toast(Language::Get('password_not_changed'), Toast_Type::Alert);
 			}
 		}
-		else Page::MsgBox(Language::Get('write'), MsgBox_Type::Alert);
+		else Page::Toast(Language::Get('write'), Toast_Type::Alert);
 
 		return false;
 	}
@@ -168,15 +168,15 @@ class Userlogin extends Singleton
 			if(is_null($id)) $id = self::$id;
 
 			$query = "UPDATE `user` SET `password` = NULL WHERE `id` = ? LIMIT 1";
-			if(!DataBase::Execute($query, [$id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+			if(!DataBase::Execute($query, [$id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 			elseif(DataBase::AffectedRows())
 			{
-				Page::MsgBox(Language::Get('password_off'), MsgBox_Type::Success);
+				Page::Toast(Language::Get('password_off'), Toast_Type::Success);
 				return true;
 			}
-			else Page::MsgBox(Language::Get('password_not_changed'), MsgBox_Type::Alert);
+			else Page::Toast(Language::Get('password_not_changed'), Toast_Type::Alert);
 		}
-		else Page::MsgBox(Language::Get('write'), MsgBox_Type::Alert);
+		else Page::Toast(Language::Get('write'), Toast_Type::Alert);
 
 		return false;
 	}
@@ -186,7 +186,7 @@ class Userlogin extends Singleton
 		if(self::IsLoggedIn())
 		{
 			$query = "UPDATE `user` SET `activity` = NOW(), `session` = NULL WHERE `id` = ? LIMIT 1";
-			if(!DataBase::Execute($query, [self::$id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+			if(!DataBase::Execute($query, [self::$id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 			self::$id = null;
 			self::$fullname = '';
 
@@ -204,7 +204,7 @@ class Userlogin extends Singleton
 		if(Num::IsInteger($id)) //other user
 		{
 			$query = "SELECT TRIM(CONCAT_WS(' ', `first`, `last`)) AS fullname FROM `user` WHERE `id` = ? LIMIT 1";
-			if(!$result = DataBase::Execute($query, [$id])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+			if(!$result = DataBase::Execute($query, [$id])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 			if($result->num_rows) return DataBase::GetResultValue();
 			else return null;
 		}
@@ -221,7 +221,7 @@ class Userlogin extends Singleton
 			'!read' => PermitLevel::Read->column(), '!read_val' => PermitLevel::Read->value, 
 			'!write' => PermitLevel::Write->column(), '!write_val' => PermitLevel::Write->value, 
 			'!lock' => PermitLevel::Lock->column(), '!lock_val' => PermitLevel::Lock->value, 
-			'permission' => $permission->value])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+			'permission' => $permission->value])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 		if($result->num_rows) return intval(DataBase::GetResultValue());
 
 		return 0;
@@ -249,12 +249,12 @@ class Userlogin extends Singleton
 					if($actual & $value) //is permission enabled?
 					{
 						$query = "UPDATE `user` SET `:column` = `:column` & ~(1 << (FIND_IN_SET(:permission, `:column`) - 1)) WHERE `id`=:id LIMIT 1"; //remove from SET
-						if(!DataBase::Execute($query, ['id' => $id, '!column' => constant("PermitLevel::{$name}")->column(), 'permission' => $permission->value])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+						if(!DataBase::Execute($query, ['id' => $id, '!column' => constant("PermitLevel::{$name}")->column(), 'permission' => $permission->value])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 					}
 					else
 					{
 						$query = "UPDATE `user` SET `:column` = CONCAT_WS(',', `:column`, :permission) WHERE `id`=:id LIMIT 1"; //add to SET
-						if(!DataBase::Execute($query, ['id' => $id, '!column' => constant("PermitLevel::{$name}")->column(), 'permission' => $permission->value])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+						if(!DataBase::Execute($query, ['id' => $id, '!column' => constant("PermitLevel::{$name}")->column(), 'permission' => $permission->value])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 					}
 				}
 			}
@@ -267,7 +267,7 @@ class Userlogin extends Singleton
 				if($value == 0) continue;//skip PermitLevel::None
 
 				$query = "UPDATE `user` SET `:column` = `:column` & ~(1 << (FIND_IN_SET(:permission, `:column`) - 1)) WHERE `id` = :id LIMIT 1"; //remove from SET
-				if(!DataBase::Execute($query, ['id' => $id, '!column' => constant("PermitLevel::{$name}")->column(), 'permission' => $permission->value])) Page::MsgBox(DataBase::GetError(), MsgBox_Type::Alert);
+				if(!DataBase::Execute($query, ['id' => $id, '!column' => constant("PermitLevel::{$name}")->column(), 'permission' => $permission->value])) Page::Toast(DataBase::GetError(), Toast_Type::Alert);
 			}
 			return true;
 		}
