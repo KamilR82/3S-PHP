@@ -10,7 +10,7 @@
     border-bottom-right-radius: 15px;
 }
 
-div.msgbox
+div.toast
 {
 	padding: 12px 40px 12px 40px;
 	margin-bottom: 15px; /* for next item */
@@ -27,8 +27,8 @@ div.msgbox
     transition: all 0.3s ease;
 }
 
-div.msgbox.error,
-div.msgbox.alert {
+div.toast.error,
+div.toast.alert {
     background-color: rgba(220,20,60, 0.9);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='white'/%3E%3Cline x1='8' y1='8' x2='16' y2='16' stroke='red' stroke-width='2'/%3E%3Cline x1='16' y1='8' x2='8' y2='16' stroke='red' stroke-width='2'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
@@ -36,7 +36,7 @@ div.msgbox.alert {
 	background-size: 24px 24px;
 }
 
-div.msgbox.warning {
+div.toast.warning {
     background-color: rgba(255,165,0, 0.9);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
@@ -44,7 +44,7 @@ div.msgbox.warning {
 	background-size: 24px 24px;
 }
 
-div.msgbox.info {
+div.toast.info {
     background-color: rgba(100,149,237, 0.8);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='white' cx='12' cy='12' r='10'/%3E%3Cpath fill='blue' d='M11 10h2v6h-2zm0-4h2v2h-2z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
@@ -52,7 +52,7 @@ div.msgbox.info {
 	background-size: 24px 24px;
 }
 
-div.msgbox.success {
+div.toast.success {
     background-color: rgba(60,179,113, 0.9);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M9 16.2l-3.5-3.5-1.4 1.4L9 19 20.5 7.5l-1.4-1.4z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
@@ -60,7 +60,7 @@ div.msgbox.success {
 	background-size: 24px 24px;
 }
 
-div.msgbox input {
+div.toast input {
 	appearance: none; -moz-appearance: none; -webkit-appearance: none;
 	position: absolute;
 	right: 12px;
@@ -72,15 +72,15 @@ div.msgbox input {
 	transition: 0.3s;
 }
 
-div.msgbox input:before {
+div.toast input:before {
 	content: '\D7'; /* &times; */
 }
 
-div.msgbox input:hover {
+div.toast input:hover {
 	filter: invert(100%);
 }
 
-div.msgbox:has(input:checked) {
+div.toast:has(input:checked) {
     max-height: 0;       /* postupne zmenšuje výšku */
     padding: 0 40px;     /* horizontálny padding zachová šírku */
     margin: 0 auto;      /* odstráni vertikálny priestor */

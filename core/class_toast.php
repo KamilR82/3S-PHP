@@ -12,11 +12,11 @@ enum Toast_Type: string
     case Success = 'success'; //green
 }
 
-final class MsgBox extends Element //private
+final class InlineToast extends Element //private
 {
 	public function __construct(string $message, Toast_Type $type = Toast_Type::Info)
 	{
-		parent::__construct('div', false, $message, class: 'msgbox'); // volanie pôvodného konštruktora
+		parent::__construct('div', false, $message, class: 'toast'); // volanie pôvodného konštruktora
 		$this->class($type->value);
 		$this->input(type: 'checkbox'); //close button
 	}
@@ -33,12 +33,12 @@ final class Toast extends Page
 			if(!self::$toaster) self::$toaster = Page::Body()->div(id: 'toaster'); //create container
 			if(self::$toaster) //add toast
 			{
-				$toast = self::$toaster->div(true, $message, class: 'msgbox');
+				$toast = self::$toaster->div(true, $message, class: 'toast');
 				$toast->class($type->value);
 				$toast->input(type: 'checkbox'); //close button
 				self::$toaster->div(false);
 			}
 		}
-		else parent::MsgBox($message, $type);
+		else parent::InlineToast($message, $type);
     }
 }
