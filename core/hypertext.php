@@ -184,7 +184,7 @@ class Element implements \Countable, \ArrayAccess, \IteratorAggregate //Element 
 
 	public function class(null|string|array $add = null, null|string|array $rem = null): ?array
 	{
-		$classes = isset($this->attrib['class']) ? explode(' ', $this->attrib['class']) : []; //exists classes?
+		$classes = isset($this->attrib['class']) ? (is_string($this->attrib['class']) ? explode(' ', $this->attrib['class']) : $this->attrib['class']) : []; //exists classes?
 		if(!is_null($add)) //append
 		{
 			if(is_string($add)) $add = explode(' ', $add);
@@ -480,7 +480,7 @@ class Page extends Singleton
 		}
 	}
 
-	public static function __callStatic($name, $data): object //Page::{method} (is_callable([__CLASS__, 'method_name']) also triggers this function)
+	public static function __callStatic(string $name, mixed $data): object //Page::{method} (is_callable([__CLASS__, 'method_name']) also triggers this function)
 	{
 		$obj = new $name(...$data); //try to load class and create object
 		if(self::$output) self::$html->open($obj); //add object

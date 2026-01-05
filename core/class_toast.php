@@ -16,29 +16,23 @@ final class InlineToast extends Element //private
 {
 	public function __construct(string $message, Toast_Type $type = Toast_Type::Info)
 	{
-		parent::__construct('div', false, $message, class: 'toast'); // volanie pôvodného konštruktora
+		parent::__construct('div', false, $message, class: 'toast'); //calling the original element constructor
 		$this->class($type->value);
-		$this->input(type: 'checkbox'); //close button
+		$this->input(type: 'checkbox'); //close 'X' button
 	}
 }
 
-final class Toast extends Page
+final class Toast extends Page //Page::Toast($message);
 {
-	private static ?object $toaster = null; //shared toast container of notification messages
+	private static ?object $toaster = null; //shared container
 
-    public function __construct(string $message, Toast_Type $type = Toast_Type::Info, bool $toast = true)
+    public function __construct(string $message, Toast_Type $type = Toast_Type::Info, bool $toasting = true)
     {
-		if($toast)
+		if($toasting)
 		{
 			if(!self::$toaster) self::$toaster = Page::Body()->div(id: 'toaster'); //create container
-			if(self::$toaster) //add toast
-			{
-				$toast = self::$toaster->div(true, $message, class: 'toast');
-				$toast->class($type->value);
-				$toast->input(type: 'checkbox'); //close button
-				self::$toaster->div(false);
-			}
+			if(self::$toaster) self::$toaster->open(new InlineToast($message, $type)); //create toast and move into toaster
 		}
-		else parent::InlineToast($message, $type);
+		else parent::InlineToast($message, $type); //toast as inline message
     }
 }

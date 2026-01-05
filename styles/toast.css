@@ -1,35 +1,44 @@
-#toaster {
-	position: fixed;
-	top: 0px;
-    left: 50%;
-    transform: translateX(-50%);
-	z-index: 9999;
+@import url("reset.css");
 
-	background-color: rgba(255, 255, 255, 0.8);
-    border-bottom-left-radius: 15px;
-    border-bottom-right-radius: 15px;
+#toaster {
+	z-index: 9000;
+	position: fixed;
+	top: 0;
+	left:0; right:0; /* left: 50%; */
+	margin: 0 auto; /* transform: translateX(-50%); */
+	padding: 0 8px; /* side space */
+	
+	min-width: 320px; /* mobile screen */
+	max-width: 500px;
+
+	pointer-events: none; /* allows clicking through the container */
+}
+
+#toaster div.toast {
+	box-shadow: 0 0 20px rgba(0, 0, 0, .5); /* toast shadow */
+	pointer-events: auto; /* clickable */
 }
 
 div.toast
 {
-	padding: 12px 40px 12px 40px;
-	margin-bottom: 15px; /* for next item */
-	border-radius: 10px;
 	position: relative;
-	margin: 6px auto;
-	max-width: 500px;
+	margin: 8px auto; /* vertical spacing */
+	padding: 12px 35px 12px 45px;
+	text-align: left;
+	border-radius: 10px;
 
-	background-color: rgba(0, 0, 0, 0.25);
-	color: #000;
-
-    overflow: hidden; /* dôležité pre animáciu zmeny výšky */
-    max-height: 200px; /* odhadnutá maximálna výška boxu */
+	/* animation */
+    max-height: 400px;
+    overflow: hidden;
     transition: all 0.3s ease;
+
+	background-color: rgba(0, 0, 0, 0.95);
+	color: #000;
 }
 
 div.toast.error,
 div.toast.alert {
-    background-color: rgba(220,20,60, 0.9);
+    background-color: rgba(220, 20, 60, 0.95);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='white'/%3E%3Cline x1='8' y1='8' x2='16' y2='16' stroke='red' stroke-width='2'/%3E%3Cline x1='16' y1='8' x2='8' y2='16' stroke='red' stroke-width='2'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: 12px 50%;
@@ -37,7 +46,7 @@ div.toast.alert {
 }
 
 div.toast.warning {
-    background-color: rgba(255,165,0, 0.9);
+    background-color: rgba(255, 165, 0, 0.95);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: 12px 50%;
@@ -45,7 +54,7 @@ div.toast.warning {
 }
 
 div.toast.info {
-    background-color: rgba(100,149,237, 0.8);
+    background-color: rgba(100, 149, 237, 0.95);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='white' cx='12' cy='12' r='10'/%3E%3Cpath fill='blue' d='M11 10h2v6h-2zm0-4h2v2h-2z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: 12px 50%;
@@ -53,7 +62,7 @@ div.toast.info {
 }
 
 div.toast.success {
-    background-color: rgba(60,179,113, 0.9);
+    background-color: rgba(60, 179, 113, 0.95);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M9 16.2l-3.5-3.5-1.4 1.4L9 19 20.5 7.5l-1.4-1.4z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: 12px 50%;
@@ -64,7 +73,7 @@ div.toast input {
 	appearance: none; -moz-appearance: none; -webkit-appearance: none;
 	position: absolute;
 	right: 12px;
-	top: 8px;
+	top: 7px;
 	color: #000;
 	font-weight: bold;
 	font-size: 22px;
@@ -81,8 +90,7 @@ div.toast input:hover {
 }
 
 div.toast:has(input:checked) {
-    max-height: 0;       /* postupne zmenšuje výšku */
-    padding: 0 40px;     /* horizontálny padding zachová šírku */
-    margin: 0 auto;      /* odstráni vertikálny priestor */
-    opacity: 0;          /* postupne zmizne */
+    margin: 0 auto;      /* removes vertical spacing */
+    max-height: 0;       /* gradually reduces height */
+    opacity: 0;          /* gradually fades out */
 }
